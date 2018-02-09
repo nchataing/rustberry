@@ -1,5 +1,5 @@
 [package]
-name = "rusbBerry"
+name = "rustberry"
 version = "0.0.0"
 authors = ["Guillaume Bertholon <guillaumer.bertholon@ens.fr",
            "Nicolas Chataing <nicolas.chataing@ens.fr>"]
