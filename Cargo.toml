@@ -1,7 +1,12 @@
 [package]
 name = "rustberry"
 version = "0.0.0"
-authors = ["Guillaume Bertholon <guillaumer.bertholon@ens.fr",
+authors = ["Guillaume Bertholon <guillaume.bertholon@ens.fr>",
            "Nicolas Chataing <nicolas.chataing@ens.fr>"]
 
+[lib]
+crate-type = ["staticlib"]
+path = "src/kernel.rs"
+
 [dependencies]
+rlibc = "1.0"
