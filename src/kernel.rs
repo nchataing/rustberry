@@ -2,6 +2,7 @@
 #![feature(asm, lang_items)]
 
 extern crate rlibc;
+mod mmio;
 mod uart;
 
 #[no_mangle]

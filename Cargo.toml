@@ -10,3 +10,7 @@ path = "src/kernel.rs"
 
 [dependencies]
 rlibc = "1.0"
+
+[features]
+raspi1 = []
+raspi2 = []

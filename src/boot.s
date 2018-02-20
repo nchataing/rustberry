@@ -11,6 +11,14 @@
 // r2 -> 0x00000100 - start of ATAGS
 // preserve these registers as argument for kernel_main
 _start:
+    // If building for Cortex A7 halt all the cores except the first
+.ifdef CORTEX_A7
+    mrc p15, #0, r4, c0, c0, #5
+    and r4, r4, #3
+    cmp r4, #0
+    bne halt
+.endif
+
 	// Setup the stack.
 	mov sp, #0x8000
 

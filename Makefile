@@ -1,6 +1,6 @@
 TARGET ?= raspi2
 VERSION ?= release
-KERNEL = rustberry-kernel-$(TARGET)
+KERNEL = rustberry-kernel
 SRC_DIR = src
 BUILD_DIR = target/$(TARGET)/$(VERSION)
 
@@ -8,10 +8,16 @@ ASSEMBLY_OBJECTS = $(BUILD_DIR)/boot.o
 KERNEL_RUST_LIB = $(BUILD_DIR)/librustberry.a
 LINKER_SCRIPT = src/linker.ld
 
-ifeq ($(VERSION), release)
-	XARGO_OPTIONS = --release
+ifeq ($(TARGET), raspi2)
+	AS_FLAGS = --defsym CORTEX_A7=1
 else
-	XARGO_OPTIONS =
+	AS_FLAGS =
+endif
+
+ifeq ($(VERSION), release)
+	XARGO_FLAGS = --release --features "$(TARGET)"
+else
+	XARGO_FLAGS = --features "$(TARGET)"
 endif
 
 all: $(BUILD_DIR)/$(KERNEL).img
@@ -30,10 +36,10 @@ $(BUILD_DIR)/$(KERNEL).elf: xargo $(ASSEMBLY_OBJECTS)
 		$(ASSEMBLY_OBJECTS) $(KERNEL_RUST_LIB)
 
 $(BUILD_DIR)/%.o: $(SRC_DIR)/%.s
-	arm-none-eabi-as $< -o $@
+	arm-none-eabi-as $(AS_FLAGS) $< -o $@
 
 xargo:
 	RUST_TARGET_PATH=$(shell pwd) xargo build --target $(TARGET) \
-		$(XARGO_OPTIONS)
+		$(XARGO_FLAGS)
 
 .PHONY: all clean run xargo
