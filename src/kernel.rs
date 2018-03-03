@@ -10,7 +10,7 @@ pub mod panic;
 use uart::{Uart, Write};
 
 #[no_mangle]
-pub extern fn kernel_main(r0: i32, r1: i32, atags: i32)
+pub extern fn kernel_main(r0: u32, r1: u32, atags: u32)
 {
     let mut uart = Uart::init();
     uart.write_str("Hello world !");

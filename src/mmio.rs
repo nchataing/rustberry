@@ -5,19 +5,19 @@ use core::ptr::{read_volatile, write_volatile};
 #[cfg(feature = "pi1")] pub const PERIPHERAL_BASE : usize = 0x20000000;
 
 /// Memory mapped read
-#[inline] pub unsafe fn read(reg: *const i32) -> i32
+#[inline] pub unsafe fn read(reg: *const u32) -> u32
 {
     read_volatile(reg)
 }
 
 /// Memory mapped write
-#[inline] pub unsafe fn write(reg: *mut i32, data: i32)
+#[inline] pub unsafe fn write(reg: *mut u32, data: u32)
 {
     write_volatile(reg, data)
 }
 
 /// Loop <count> times in a way that the compiler won't optimize away
-#[inline] pub fn delay(count: i32)
+#[inline] pub fn delay(count: u32)
 {
     let mut _c = count;
     unsafe

@@ -2,18 +2,20 @@ use mmio;
 use gpio;
 pub use core::fmt::{Write, Result};
 
-const AUX_ENABLES     : *mut i32 = (mmio::PERIPHERAL_BASE+0x00215004) as *mut i32;
-const AUX_MU_IO_REG   : *mut i32 = (mmio::PERIPHERAL_BASE+0x00215040) as *mut i32;
-const AUX_MU_IER_REG  : *mut i32 = (mmio::PERIPHERAL_BASE+0x00215044) as *mut i32;
-const AUX_MU_IIR_REG  : *mut i32 = (mmio::PERIPHERAL_BASE+0x00215048) as *mut i32;
-const AUX_MU_LCR_REG  : *mut i32 = (mmio::PERIPHERAL_BASE+0x0021504C) as *mut i32;
-const AUX_MU_MCR_REG  : *mut i32 = (mmio::PERIPHERAL_BASE+0x00215050) as *mut i32;
-const AUX_MU_LSR_REG  : *mut i32 = (mmio::PERIPHERAL_BASE+0x00215054) as *mut i32;
-const AUX_MU_MSR_REG  : *mut i32 = (mmio::PERIPHERAL_BASE+0x00215058) as *mut i32;
-const AUX_MU_SCRATCH  : *mut i32 = (mmio::PERIPHERAL_BASE+0x0021505C) as *mut i32;
-const AUX_MU_CNTL_REG : *mut i32 = (mmio::PERIPHERAL_BASE+0x00215060) as *mut i32;
-const AUX_MU_STAT_REG : *mut i32 = (mmio::PERIPHERAL_BASE+0x00215064) as *mut i32;
-const AUX_MU_BAUD_REG : *mut i32 = (mmio::PERIPHERAL_BASE+0x00215068) as *mut i32;
+const AUX_BASE : usize = mmio::PERIPHERAL_BASE + 0x215000;
+
+const AUX_ENABLES     : *mut u32 = (AUX_BASE + 0x04) as *mut u32;
+const AUX_MU_IO_REG   : *mut u32 = (AUX_BASE + 0x40) as *mut u32;
+const AUX_MU_IER_REG  : *mut u32 = (AUX_BASE + 0x44) as *mut u32;
+const AUX_MU_IIR_REG  : *mut u32 = (AUX_BASE + 0x48) as *mut u32;
+const AUX_MU_LCR_REG  : *mut u32 = (AUX_BASE + 0x4C) as *mut u32;
+const AUX_MU_MCR_REG  : *mut u32 = (AUX_BASE + 0x50) as *mut u32;
+const AUX_MU_LSR_REG  : *mut u32 = (AUX_BASE + 0x54) as *mut u32;
+const AUX_MU_MSR_REG  : *mut u32 = (AUX_BASE + 0x58) as *mut u32;
+const AUX_MU_SCRATCH  : *mut u32 = (AUX_BASE + 0x5C) as *mut u32;
+const AUX_MU_CNTL_REG : *mut u32 = (AUX_BASE + 0x60) as *mut u32;
+const AUX_MU_STAT_REG : *mut u32 = (AUX_BASE + 0x64) as *mut u32;
+const AUX_MU_BAUD_REG : *mut u32 = (AUX_BASE + 0x68) as *mut u32;
 
 pub struct Uart;
 
@@ -74,7 +76,7 @@ impl Uart
         unsafe
         {
             while mmio::read(AUX_MU_LSR_REG) & 0x20 == 0 {}
-            mmio::write(AUX_MU_IO_REG, c as i32);
+            mmio::write(AUX_MU_IO_REG, c as u32);
         }
     }
 
