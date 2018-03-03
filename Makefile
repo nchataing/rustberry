@@ -1,6 +1,6 @@
-TARGET ?= raspi2
+TARGET ?= pi2
 VERSION ?= release
-KERNEL = rustberry-kernel
+KERNEL = kernel
 SRC_DIR = src
 BUILD_DIR = target/$(TARGET)/$(VERSION)
 
@@ -8,25 +8,25 @@ ASSEMBLY_OBJECTS = $(BUILD_DIR)/boot.o
 KERNEL_RUST_LIB = $(BUILD_DIR)/librustberry.a
 LINKER_SCRIPT = src/linker.ld
 
-ifeq ($(TARGET), raspi2)
-	AS_FLAGS = --defsym CORTEX_A7=1
-else
-	AS_FLAGS =
-endif
-
 ifeq ($(VERSION), release)
 	XARGO_FLAGS = --release --features "$(TARGET)"
 else
 	XARGO_FLAGS = --features "$(TARGET)"
 endif
 
-all: $(BUILD_DIR)/$(KERNEL).img
+all: $(BUILD_DIR)/$(KERNEL).img $(BUILD_DIR)/$(KERNEL).hex $(BUILD_DIR)/$(KERNEL).asm
 
 run: $(BUILD_DIR)/$(KERNEL).elf
 	qemu-system-arm -m 256 -M raspi2 -serial stdio -display none -kernel $<
 
 clean:
 	rm -rf target
+
+$(BUILD_DIR)/$(KERNEL).asm: $(BUILD_DIR)/$(KERNEL).elf
+	arm-none-eabi-objdump -D $< > $@
+
+$(BUILD_DIR)/$(KERNEL).hex: $(BUILD_DIR)/$(KERNEL).elf
+	arm-none-eabi-objcopy $< -O ihex $@
 
 $(BUILD_DIR)/$(KERNEL).img: $(BUILD_DIR)/$(KERNEL).elf
 	arm-none-eabi-objcopy $< -O binary $@

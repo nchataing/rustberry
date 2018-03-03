@@ -12,5 +12,5 @@ path = "src/kernel.rs"
 rlibc = "1.0"
 
 [features]
-raspi1 = []
-raspi2 = []
+pi1 = []
+pi2 = []
