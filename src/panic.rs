@@ -1,32 +1,25 @@
 use mmio;
 use gpio;
+use uart::{Uart, Write};
 use core::fmt;
 
 #[lang = "panic_fmt"]
 #[no_mangle]
 pub extern fn panic_fmt(args: fmt::Arguments, file: &str, line: usize) -> !
 {
-    unsafe
+    let _ = write!(Uart, "Kernel panic!\n{} l{}: {}", file, line, args);
+
+    gpio::select_pin_function(47, gpio::PinFunction::Output);
+    gpio::select_pin_function(35, gpio::PinFunction::Output);
+
+    loop
     {
-        let mut ra = mmio::read(gpio::GPFSEL4);
-        ra &= !(7<<21);
-        ra |= 1<<21;
-        mmio::write(gpio::GPFSEL4, ra);
-
-        ra = mmio::read(gpio::GPFSEL3);
-        ra &= !(7<<15);
-        ra |= 1<<15;
-        mmio::write(gpio::GPFSEL3, ra);
-
-        loop
-        {
-            mmio::write(gpio::GPSET1, 1<<(47-32));
-            mmio::write(gpio::GPCLR1, 1<<(35-32));
-            mmio::delay(0x100000);
-            mmio::write(gpio::GPCLR1, 1<<(47-32));
-            mmio::write(gpio::GPSET1, 1<<(35-32));
-            mmio::delay(0x100000);
-        }
+        gpio::set_pin(47);
+        gpio::clear_pin(35);
+        mmio::delay(0x100000);
+        gpio::set_pin(47);
+        gpio::clear_pin(35);
+        mmio::delay(0x100000);
     }
 }
 
