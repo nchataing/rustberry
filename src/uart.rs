@@ -2,67 +2,97 @@ use mmio;
 use gpio;
 pub use core::fmt::{Write, Result};
 
-const AUX_BASE : usize = mmio::PERIPHERAL_BASE + 0x215000;
+/// The base address for UART.
+const UART0_BASE : usize = (gpio::GPIO_BASE + 0x1000);
 
-const AUX_ENABLES     : *mut u32 = (AUX_BASE + 0x04) as *mut u32;
-const AUX_MU_IO_REG   : *mut u32 = (AUX_BASE + 0x40) as *mut u32;
-const AUX_MU_IER_REG  : *mut u32 = (AUX_BASE + 0x44) as *mut u32;
-const AUX_MU_IIR_REG  : *mut u32 = (AUX_BASE + 0x48) as *mut u32;
-const AUX_MU_LCR_REG  : *mut u32 = (AUX_BASE + 0x4C) as *mut u32;
-const AUX_MU_MCR_REG  : *mut u32 = (AUX_BASE + 0x50) as *mut u32;
-const AUX_MU_LSR_REG  : *mut u32 = (AUX_BASE + 0x54) as *mut u32;
-const AUX_MU_MSR_REG  : *mut u32 = (AUX_BASE + 0x58) as *mut u32;
-const AUX_MU_SCRATCH  : *mut u32 = (AUX_BASE + 0x5C) as *mut u32;
-const AUX_MU_CNTL_REG : *mut u32 = (AUX_BASE + 0x60) as *mut u32;
-const AUX_MU_STAT_REG : *mut u32 = (AUX_BASE + 0x64) as *mut u32;
-const AUX_MU_BAUD_REG : *mut u32 = (AUX_BASE + 0x68) as *mut u32;
+// The offsets for reach register for the UART.
+const UART0_DR     : *mut u32 = (UART0_BASE + 0x00) as *mut u32;
+const UART0_RSRECR : *mut u32 = (UART0_BASE + 0x04) as *mut u32;
+const UART0_FR     : *mut u32 = (UART0_BASE + 0x18) as *mut u32;
+const UART0_ILPR   : *mut u32 = (UART0_BASE + 0x20) as *mut u32;
+const UART0_IBRD   : *mut u32 = (UART0_BASE + 0x24) as *mut u32;
+const UART0_FBRD   : *mut u32 = (UART0_BASE + 0x28) as *mut u32;
+const UART0_LCRH   : *mut u32 = (UART0_BASE + 0x2C) as *mut u32;
+const UART0_CR     : *mut u32 = (UART0_BASE + 0x30) as *mut u32;
+const UART0_IFLS   : *mut u32 = (UART0_BASE + 0x34) as *mut u32;
+const UART0_IMSC   : *mut u32 = (UART0_BASE + 0x38) as *mut u32;
+const UART0_RIS    : *mut u32 = (UART0_BASE + 0x3C) as *mut u32;
+const UART0_MIS    : *mut u32 = (UART0_BASE + 0x40) as *mut u32;
+const UART0_ICR    : *mut u32 = (UART0_BASE + 0x44) as *mut u32;
+const UART0_DMACR  : *mut u32 = (UART0_BASE + 0x48) as *mut u32;
+const UART0_ITCR   : *mut u32 = (UART0_BASE + 0x80) as *mut u32;
+const UART0_ITIP   : *mut u32 = (UART0_BASE + 0x84) as *mut u32;
+const UART0_ITOP   : *mut u32 = (UART0_BASE + 0x88) as *mut u32;
+const UART0_TDR    : *mut u32 = (UART0_BASE + 0x8C) as *mut u32;
 
 pub fn init()
 {
     unsafe
     {
-        mmio::write(AUX_ENABLES,1);
-        mmio::write(AUX_MU_IER_REG,0);
-        mmio::write(AUX_MU_CNTL_REG,0);
-        mmio::write(AUX_MU_LCR_REG,3);
-        mmio::write(AUX_MU_MCR_REG,0);
-        mmio::write(AUX_MU_IER_REG,0);
-        mmio::write(AUX_MU_IIR_REG,0xC6);
-        mmio::write(AUX_MU_BAUD_REG,270);
+        // Disable UART0.
+        mmio::write(UART0_CR, 0x00000000);
 
-        gpio::select_pin_function(14, gpio::PinFunction::Alt5);
-        gpio::select_pin_function(15, gpio::PinFunction::Alt5);
+        // Setup the GPIO pin 14 & 15.
+        gpio::select_pin_function(14, gpio::PinFunction::Alt0);
+        gpio::select_pin_function(15, gpio::PinFunction::Alt0);
 
+        // Disable pull up/down for pin 14 & 15.
         gpio::set_pull_up_down(14, gpio::PullUpDownMode::Disabled);
         gpio::set_pull_up_down(15, gpio::PullUpDownMode::Disabled);
 
-        mmio::write(AUX_MU_CNTL_REG,3);
+        // Clear pending interrupts.
+        mmio::write(UART0_ICR, (1 << 1) | (1 << 4) | (1 << 5) | (1 << 6) |
+                            (1 << 7) | (1 << 8) | (1 << 9) | (1 << 10));
+
+        // Set integer & fractional part of baud rate.
+        // Divider = UART_CLOCK/(16 * Baud)
+        // Fraction part register = (Fractional part * 64) + 0.5
+        // UART_CLOCK = 3000000; Baud = 115200.
+
+        // Divider = 3000000 / (16 * 115200) = 1.627 = ~1.
+        mmio::write(UART0_IBRD, 1);
+        // Fractional part register = (.627 * 64) + 0.5 = 40.6 = ~40.
+        mmio::write(UART0_FBRD, 40);
+
+        // Enable FIFO & 8 bit data transmission (1 stop bit, no parity).
+        mmio::write(UART0_LCRH, (1 << 4) | (0b11 << 5));
+
+        // Mask all interrupts.
+        mmio::write(UART0_IMSC, (1 << 1) | (1 << 4) | (1 << 5) | (1 << 6) |
+                            (1 << 7) | (1 << 8) | (1 << 9) | (1 << 10));
+
+        // Enable UART0, receive & transfer part of UART.
+        mmio::write(UART0_CR, (1 << 0) | (1 << 8) | (1 << 9));
     }
 }
 
 pub fn read_byte() -> u8
 {
+    // Wait for UART to have received something.
+    while !has_char_available() { }
+
     unsafe
     {
-        while !has_char_available() {}
-        (mmio::read(AUX_MU_IO_REG) & 0xFF) as u8
+        mmio::read(UART0_DR) as u8
     }
+
 }
 
 pub fn has_char_available() -> bool
 {
     unsafe
     {
-        mmio::read(AUX_MU_LSR_REG) & 0x01 != 0
+        mmio::read(UART0_FR) & (1 << 4) == 0
     }
 }
 
-pub fn write_byte(c : u8)
+pub fn write_byte(c: u8)
 {
     unsafe
     {
-        while mmio::read(AUX_MU_LSR_REG) & 0x20 == 0 {}
-        mmio::write(AUX_MU_IO_REG, c as u32);
+        // Wait for UART to become ready to transmit.
+        while (mmio::read(UART0_FR) & (1 << 5)) != 0 { }
+        mmio::write(UART0_DR, c as u32);
     }
 }
 
@@ -74,17 +104,9 @@ pub fn write_str(s: &str)
     }
 }
 
-/*pub fn flush()
-{
-    unsafe
-    {
-        while mmio::read(AUX_MU_LSR_REG) & 0x100 != 0 {}
-    }
-}*/
+pub struct Uart0;
 
-pub struct Uart;
-
-impl Write for Uart
+impl Write for Uart0
 {
     fn write_str(&mut self, s: &str) -> Result
     {
@@ -92,3 +114,4 @@ impl Write for Uart
         Ok(())
     }
 }
+

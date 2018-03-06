@@ -1,16 +1,17 @@
 // To keep this in the first portion of the binary.
 .section ".text.boot"
 
-// Make _start global.
-.globl _start
+// Make start global.
+.globl start
 
 // Entry point for the kernel.
-// r15 -> should begin execution at 0x8000.
-// r0 -> 0x00000000
-// r1 -> 0x00000C42
-// r2 -> 0x00000100 - start of ATAGS
-// preserve these registers as argument for kernel_main
-_start:
+start:
+    // Halt all cores except one.
+    mrc p15, #0, r4, c0, c0, #5
+    and r4, r4, #3
+    cmp r4, #0
+    bne halt
+
     // Setup the stack.
     mov sp, #0x8000
 
@@ -31,6 +32,12 @@ _start:
 2:
     cmp r4, r9
     blo 1b
+
+    // Enable FPU
+    ldr r0, =(0xF << 20)
+    mcr p15, 0, r0, c1, c0, 2
+    mov r3, #0x40000000
+    .long 0xeee83a10 // vmsr FPEXC, r3
 
     // Call kernel_main
     bl kernel_main

@@ -12,6 +12,5 @@
     "target-c-int-width": "32",
 
     "executables": true,
-    "no-compiler-rt": true,
     "panic-strategy": "abort"
 }

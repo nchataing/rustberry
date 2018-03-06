@@ -2,23 +2,22 @@
 #![feature(asm, lang_items)]
 #![allow(dead_code)]
 
+#![feature(compiler_builtins_lib)]
+extern crate compiler_builtins;
 extern crate rlibc;
+
 mod mmio;
 mod gpio;
 mod uart;
 pub mod panic;
 
-use uart::{Uart, Write};
+use uart::{Uart0, Write};
 
 #[no_mangle]
-pub extern fn kernel_main(r0: u32, r1: u32, atags: u32) -> !
+pub extern fn kernel_main() -> !
 {
     uart::init();
-
     uart::write_str("Hello world !\n");
-    write!(Uart, "r0 = {}\n", r0).unwrap();
-    write!(Uart, "r1 = {}\n", r1).unwrap();
-    write!(Uart, "atags = 0x{:x}\n", atags).unwrap();
 
     loop
     {

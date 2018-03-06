@@ -1,33 +1,36 @@
-ENTRY(_start)
+MEMORY
+{
+    start : ORIGIN = 0x0, LENGTH = 0x100
+    kernel : ORIGIN = 0x8000, LENGTH = 0x18000
+}
 
 SECTIONS
 {
-    /* Starts at LOADER_ADDR. */
-    . = 0x8000;
-    .text :
+    .text.boot :
     {
         KEEP(*(.text.boot))
-        *(.text)
-    }
-    . = ALIGN(4096); /* align to page size */
+    } >start
 
-    .rodata :
+    /* Starts at LOADER_ADDR. */
+    .text BLOCK(4096) :
+    {
+        *(.text)
+    } >kernel
+
+    .rodata BLOCK(4096) :
     {
         *(.rodata)
-    }
-    . = ALIGN(4096); /* align to page size */
+    } >kernel
 
-    .data :
+    .data BLOCK(4096) :
     {
         *(.data)
-    }
-    . = ALIGN(4096); /* align to page size */
+    } >kernel
 
     __bss_start = .;
-    .bss :
+    .bss BLOCK(4096) :
     {
         *(.bss)
-    }
-    . = ALIGN(4096); /* align to page size */
+    } >kernel
     __bss_end = .;
 }
