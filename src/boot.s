@@ -4,8 +4,19 @@
 // Make start global.
 .globl start
 
-// Entry point for the kernel.
+// Interrupt vector table
 start:
+    b reset
+    b halt
+    b halt
+    b halt
+    b halt
+    nop // Reserved
+    b halt
+    b halt
+
+// Entry point for the kernel.
+reset:
     // Halt all cores except one.
     mrc p15, #0, r4, c0, c0, #5
     and r4, r4, #3
@@ -34,10 +45,10 @@ start:
     blo 1b
 
     // Enable FPU
-    ldr r0, =(0xF << 20)
-    mcr p15, 0, r0, c1, c0, 2
-    mov r3, #0x40000000
-    .long 0xeee83a10 // vmsr FPEXC, r3
+    //ldr r0, =(0xF << 20)
+    //mcr p15, 0, r0, c1, c0, 2
+    //mov r3, #0x40000000
+    //.long 0xeee83a10 // vmsr FPEXC, r3
 
     // Call kernel_main
     bl kernel_main

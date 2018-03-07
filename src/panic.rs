@@ -1,18 +1,19 @@
 use mmio;
 use gpio;
-use uart;
+use uart::{Uart0, Write};
 use core::fmt;
 
 #[lang = "panic_fmt"]
 #[no_mangle]
-pub extern fn rust_begin_panic(msg: fmt::Arguments, file: &'static str,
-                               line: u32, column: u32) -> !
+pub extern fn panic_fmt(msg: fmt::Arguments, file: &'static str,
+                        line: u32, column: u32) -> !
 {
-    uart::write_str("Kernel panic !");
+    let _ = write!(Uart0,
+                   "Kernel panic !\nFile {}, line {}, column {}:\n {}\n",
+                   file, line, column, msg);
 
     gpio::select_pin_function(47, gpio::PinFunction::Output);
     gpio::select_pin_function(35, gpio::PinFunction::Output);
-
     loop
     {
         gpio::set_pin(47);
@@ -23,4 +24,3 @@ pub extern fn rust_begin_panic(msg: fmt::Arguments, file: &'static str,
         mmio::delay(0x100000);
     }
 }
-

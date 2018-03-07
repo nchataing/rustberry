@@ -9,10 +9,8 @@ crate-type = ["staticlib"]
 path = "src/kernel.rs"
 
 [dependencies]
+compiler_builtins = { git = "https://github.com/rust-lang-nursery/compiler-builtins" }
 rlibc = "1.0"
-
-[dependencies.compiler_builtins]
-git = "https://github.com/rust-lang-nursery/compiler-builtins"
 
 [features]
 pi1 = []

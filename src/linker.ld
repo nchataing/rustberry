@@ -1,7 +1,7 @@
 MEMORY
 {
     start : ORIGIN = 0x0, LENGTH = 0x100
-    kernel : ORIGIN = 0x8000, LENGTH = 0x18000
+    kernel_prgm : ORIGIN = 0x8000, LENGTH = 0x18000
 }
 
 SECTIONS
@@ -11,26 +11,30 @@ SECTIONS
         KEEP(*(.text.boot))
     } >start
 
-    /* Starts at LOADER_ADDR. */
-    .text BLOCK(4096) :
+    .text :
     {
-        *(.text)
-    } >kernel
+        *(.text*)
+    } >kernel_prgm
+    . = ALIGN(4096);
 
-    .rodata BLOCK(4096) :
+    .rodata :
     {
-        *(.rodata)
-    } >kernel
+        *(.rodata*)
+        *(.data.rel.ro.*)
+    } >kernel_prgm
+    . = ALIGN(4096);
 
-    .data BLOCK(4096) :
+    .data :
     {
-        *(.data)
-    } >kernel
+        *(.data*)
+    } >kernel_prgm
+    . = ALIGN(4096);
 
     __bss_start = .;
-    .bss BLOCK(4096) :
+    .bss :
     {
-        *(.bss)
-    } >kernel
+        *(.bss*)
+    } >kernel_prgm
     __bss_end = .;
+    . = ALIGN(4096);
 }

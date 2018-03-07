@@ -10,7 +10,10 @@
     "target-endian": "little",
     "target-pointer-width": "32",
     "target-c-int-width": "32",
+    "features": "-vfp2,-vfp3,-vfp4,-crypto,-neon,+soft-float",
 
     "executables": true,
+    "relocation_model": "static",
+    "position_independent_executables": false,
     "panic-strategy": "abort"
 }
