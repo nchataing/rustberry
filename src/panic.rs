@@ -1,6 +1,6 @@
 use mmio;
 use gpio;
-use uart::{Uart0, Write};
+use mini_uart::{Uart1, Write};
 use core::fmt;
 
 #[lang = "panic_fmt"]
@@ -8,7 +8,7 @@ use core::fmt;
 pub extern fn panic_fmt(msg: fmt::Arguments, file: &'static str,
                         line: u32, column: u32) -> !
 {
-    let _ = write!(Uart0,
+    let _ = write!(Uart1,
                    "Kernel panic !\nFile {}, line {}, column {}:\n {}\n",
                    file, line, column, msg);
 

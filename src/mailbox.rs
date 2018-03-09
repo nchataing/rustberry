@@ -1,36 +1,39 @@
 use mmio;
 
-pub const MAIL0_BASE : usize = 0x3F00B880;
+/// Mailbox 0 base address (Read by ARM)
+const MAIL0_BASE : usize = mmio::PERIPHERAL_BASE + 0xB880;
 
-pub const MAIL0_READ   : *mut u32 = (MAIL0_BASE + 0x00) as *mut u32;
-pub const MAIL0_PEAK   : *mut u32 = (MAIL0_BASE + 0x10) as *mut u32;
-pub const MAIL0_SENDER : *mut u32 = (MAIL0_BASE + 0x14) as *mut u32;
-pub const MAIL0_STATUS : *mut u32 = (MAIL0_BASE + 0x18) as *mut u32;
-pub const MAIL0_CONFIG : *mut u32 = (MAIL0_BASE + 0x1C) as *mut u32;
-pub const MAIL0_WRITE  : *mut u32 = (MAIL0_BASE + 0x20) as *mut u32;
+const MAIL0_READ   : *mut u32 = (MAIL0_BASE + 0x00) as *mut u32;
+const MAIL0_PEAK   : *mut u32 = (MAIL0_BASE + 0x10) as *mut u32;
+const MAIL0_SENDER : *mut u32 = (MAIL0_BASE + 0x14) as *mut u32;
+const MAIL0_STATUS : *mut u32 = (MAIL0_BASE + 0x18) as *mut u32;
+const MAIL0_CONFIG : *mut u32 = (MAIL0_BASE + 0x1C) as *mut u32;
+
+/// Mailbox 1 base address (Read by GPU)
+const MAIL1_BASE   : usize = MAIL0_BASE + 0x20;
+
+const MAIL1_WRITE  : *mut u32 = (MAIL1_BASE + 0x00) as *mut u32;
+const MAIL1_PEAK   : *mut u32 = (MAIL1_BASE + 0x10) as *mut u32;
+const MAIL1_SENDER : *mut u32 = (MAIL1_BASE + 0x14) as *mut u32;
+const MAIL1_STATUS : *mut u32 = (MAIL1_BASE + 0x18) as *mut u32;
+const MAIL1_CONFIG : *mut u32 = (MAIL1_BASE + 0x1C) as *mut u32;
 
 // MAILBOX_FULL is the 31th bit of MAILBOX_STATUS
-pub const MAILBOX_FULL  : u32 = 1<<31;
+const MAILBOX_FULL  : u32 = 1<<31;
 // MAILBOX_EMPTY is the 30th bit of MAILBOX_STATUS
-pub const MAILBOX_EMPTY : u32 = 1<<30;
+const MAILBOX_EMPTY : u32 = 1<<30;
 
 pub fn receive(channel: u8) -> Option<u32>
 {
     unsafe
     {
         let mut count : usize = 0;
-        let mut not_empty = true;
 
         loop
         {
-            while not_empty
+            mmio::mem_barrier();
+            while mmio::read(MAIL0_STATUS) & MAILBOX_EMPTY != 0
             {
-                mmio::mem_barrier();
-                if mmio::read(MAIL0_STATUS) & MAILBOX_EMPTY != 0
-                {
-                    not_empty = false
-                }
-
                 // The program won't wait forever.
                 count += 1;
                 if count > 0x00100000 { return None; }
@@ -53,20 +56,9 @@ pub fn send<T>(channel: u8, data: *mut T)
 {
     unsafe
     {
-        let mut not_full = true;
-
-        while not_full
-        {
-            mmio::mem_barrier();
-            if mmio::read(MAIL0_STATUS) & MAILBOX_FULL != 0
-            {
-                not_full = false
-            }
-        }
-
-        mmio::flush_cache();
-
         mmio::mem_barrier();
-        mmio::write(MAIL0_WRITE, (data as u32) | (channel as u32));
+        while mmio::read(MAIL1_STATUS) & MAILBOX_FULL != 0 { }
+        mmio::mem_barrier();
+        mmio::write(MAIL1_WRITE, (data as u32) | (channel as u32));
     }
 }

@@ -72,8 +72,7 @@ pub fn flush_cache()
     {
         asm!(
             "mcr p15, #0, $0, c7, c14, #1
-             mcr p15, #0, $0, c7, c14, #2
-             mcr p15, #0, $0, c7, c14, #0"
+             mcr p15, #0, $0, c7, c14, #2"
              : : "r"(0) : : "volatile")
     }
 }

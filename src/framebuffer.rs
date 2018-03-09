@@ -1,6 +1,7 @@
 use mailbox;
 
 #[repr(C, align(128))]
+#[derive(Debug)]
 pub struct FbData
 {
     width : u32,
@@ -33,7 +34,7 @@ pub fn init(w: u32, h: u32) -> FbData
     mailbox::send(1, &mut data);
 
     let foo = mailbox::receive(1);
-    if foo != Some(0) || data.pointer == 0 as *mut u8
+    if foo != Some(0)
     {
         panic!("Failed to init framebuffer")
     }

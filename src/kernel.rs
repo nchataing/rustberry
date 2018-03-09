@@ -8,27 +8,29 @@ extern crate rlibc;
 
 mod mmio;
 mod gpio;
-mod uart;
+mod mini_uart;
 mod mailbox;
 mod framebuffer;
 pub mod panic;
 
-use uart::{Uart0, Write};
+use mini_uart::{Uart1, Write};
 
 #[no_mangle]
-pub extern fn kernel_main(r0: u32, r1: u32, r2: u32) -> !
+pub extern fn kernel_main(dummy : i32) -> !
 {
-    uart::init();
-    write!(Uart0, "Hello world !\n").unwrap();
+    mini_uart::init();
+    write!(Uart1, "Hello world !\n").unwrap();
 
-    write!(Uart0, "r0 = {}, r1 = {}, r2 = {}\n", r0, r1, r2).unwrap();
-    write!(Uart0, "FPU ! {} / {} = {}\n", 4., 5., (4.+(r0 as f32))/5.).unwrap();
+    let fb_data = framebuffer::init(640,480);
+    write!(Uart1, "{:?}\n", fb_data).unwrap();
 
-    // panic!("Ahah !");
+    write!(Uart1, "42 = {}\n", 40+2).unwrap();
+    write!(Uart1, "FPU ! {} / {} = {}\n", dummy as f32, 5., (dummy as f32)/5.).unwrap();
+    panic!("Ahah !");
 
     loop
     {
-        let c = uart::read_byte();
-        uart::write_byte(c);
+        let c = mini_uart::read_byte();
+        mini_uart::write_byte(c);
     }
 }
