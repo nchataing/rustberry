@@ -9,6 +9,8 @@ extern crate rlibc;
 mod mmio;
 mod gpio;
 mod uart;
+mod mailbox;
+mod framebuffer;
 pub mod panic;
 
 use uart::{Uart0, Write};
@@ -17,12 +19,12 @@ use uart::{Uart0, Write};
 pub extern fn kernel_main(r0: u32, r1: u32, r2: u32) -> !
 {
     uart::init();
-    write!(Uart0, "Hello world !\n");
+    write!(Uart0, "Hello world !\n").unwrap();
 
-    write!(Uart0, "r0 = {}, r1 = {}, r2 = {}\n", r0, r1, r2);
-    write!(Uart0, "FPU ! {} / {} = {}\n", 4., 5., (4.+(r0 as f32))/5.);
+    write!(Uart0, "r0 = {}, r1 = {}, r2 = {}\n", r0, r1, r2).unwrap();
+    write!(Uart0, "FPU ! {} / {} = {}\n", 4., 5., (4.+(r0 as f32))/5.).unwrap();
 
-    panic!("Ahah !");
+    // panic!("Ahah !");
 
     loop
     {

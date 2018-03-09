@@ -34,3 +34,46 @@ use core::ptr::{read_volatile, write_volatile};
         );
     }
 }
+
+/**
+ * Data memory barrier
+ * No memory access after the DMB can run until all memory accesses before it
+ * have completed
+ */
+pub fn mem_barrier()
+{
+    unsafe
+    {
+        asm!("dmb" : : : : "volatile")
+    }
+}
+
+/**
+ * Data synchronisation barrier
+ * No instruction after the DSB can run until all instructions before it have
+ * completed
+ */
+pub fn sync_barrier()
+{
+    unsafe
+    {
+        asm!("dsb" : : "r"(0) : : "volatile")
+    }
+}
+
+/**
+ * Clean and invalidate entire cache
+ * Flush pending writes to main memory
+ * Remove all data in data cache
+ */
+pub fn flush_cache()
+{
+    unsafe
+    {
+        asm!(
+            "mcr p15, #0, $0, c7, c14, #1
+             mcr p15, #0, $0, c7, c14, #2
+             mcr p15, #0, $0, c7, c14, #0"
+             : : "r"(0) : : "volatile")
+    }
+}
