@@ -10,11 +10,13 @@ LINKER_SCRIPT = src/linker.ld
 
 QEMU_OPTIONS = -M raspi2 -serial stdio -display none -d "int,cpu_reset,unimp,guest_errors"
 
+FEATURES ?= mini_uart
 ifeq ($(VERSION), release)
-	XARGO_FLAGS = --release --features "$(TARGET)"
+	VERSION_FLAG = --release
 else
-	XARGO_FLAGS = --features "$(TARGET)"
+	VERSION_FLAG =
 endif
+XARGO_FLAGS = $(VERSION_FLAG) --features "$(TARGET) $(FEATURES)"
 
 all: $(BUILD_DIR)/$(KERNEL).img $(BUILD_DIR)/$(KERNEL).hex $(BUILD_DIR)/$(KERNEL).asm
 

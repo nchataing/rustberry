@@ -56,7 +56,7 @@ pub fn has_char_available() -> bool
     }
 }
 
-pub fn write_byte(c : u8)
+pub fn write_byte(c: u8)
 {
     unsafe
     {
@@ -73,17 +73,9 @@ pub fn write_str(s: &str)
     }
 }
 
-/*pub fn flush()
-{
-    unsafe
-    {
-        while mmio::read(AUX_MU_LSR_REG) & 0x100 != 0 {}
-    }
-}*/
+pub struct Uart;
 
-pub struct Uart1;
-
-impl Write for Uart1
+impl Write for Uart
 {
     fn write_str(&mut self, s: &str) -> Result
     {

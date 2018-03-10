@@ -13,8 +13,8 @@ compiler_builtins = { git = "https://github.com/rust-lang-nursery/compiler-built
 rlibc = "1.0"
 
 [features]
-pi1 = []
 pi2 = []
+mini_uart = []
 
 [profile.dev]
 panic = "abort"

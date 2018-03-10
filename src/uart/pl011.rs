@@ -104,9 +104,9 @@ pub fn write_str(s: &str)
     }
 }
 
-pub struct Uart0;
+pub struct Uart;
 
-impl Write for Uart0
+impl Write for Uart
 {
     fn write_str(&mut self, s: &str) -> Result
     {
