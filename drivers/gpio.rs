@@ -113,14 +113,15 @@ const GPPUD : *mut u32  = (GPIO_BASE + 0x94) as *mut u32;
 const GPPUDCLK0 : *mut u32 = (GPIO_BASE + 0x98) as *mut u32;
 const GPPUDCLK1 : *mut u32 = (GPIO_BASE + 0x9C) as *mut u32;
 
-pub enum PullUpDownMode
+pub enum PullMode
 {
     Disabled = 0b00,
     PullDown = 0b01,
     PullUp = 0b10,
 }
 
-pub fn set_pull_up_down(pin_id: u8, mode: PullUpDownMode)
+/// Set the pull up/down mode for the given pin.
+pub fn set_pull_mode(pin_id: u8, mode: PullMode)
 {
     assert!(pin_id < 54);
     unsafe

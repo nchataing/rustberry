@@ -27,10 +27,7 @@ use core::ptr::{read_volatile, write_volatile};
             "1:
                 subs $0, $0, #1
                 bne 1b"
-            : "+r"(_c)
-            :
-            :
-            : "volatile"
+            : "+r"(_c)  ::: "volatile"
         );
     }
 }
@@ -44,7 +41,7 @@ pub fn mem_barrier()
 {
     unsafe
     {
-        asm!("dmb" : : : : "volatile")
+        asm!("dmb" :::: "volatile")
     }
 }
 
@@ -57,7 +54,7 @@ pub fn sync_barrier()
 {
     unsafe
     {
-        asm!("dsb" : : "r"(0) : : "volatile")
+        asm!("dsb" :::: "volatile")
     }
 }
 
@@ -73,6 +70,6 @@ pub fn flush_cache()
         asm!(
             "mcr p15, #0, $0, c7, c14, #1
              mcr p15, #0, $0, c7, c14, #2"
-             : : "r"(0) : : "volatile")
+             :: "r"(0) :: "volatile")
     }
 }

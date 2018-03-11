@@ -10,7 +10,6 @@ KERNEL_LINKER_SCRIPT = kernel/linker.ld
 
 QEMU_OPTIONS = -M raspi2 -serial stdio -display none -d "int,cpu_reset,unimp,guest_errors"
 
-FEATURES ?= mini_uart
 ifeq ($(VERSION), release)
 	VERSION_FLAG = --release
 else
@@ -40,6 +39,7 @@ clean:
 	arm-none-eabi-objcopy $< -O binary $@
 
 $(BUILD_DIR)/$(KERNEL).elf: xargo/kernel $(KERNEL_ASSEMBLY_OBJECTS)
+
 	arm-none-eabi-ld --gc-sections -T $(KERNEL_LINKER_SCRIPT) -o $@ $(KERNEL_ASSEMBLY_OBJECTS) $(KERNEL_RUST_LIB)
 
 $(BUILD_DIR)/%.o: %.s
