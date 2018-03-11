@@ -1,0 +1,18 @@
+[package]
+name = "rustberry_kernel"
+version = "0.0.0"
+authors = ["Guillaume Bertholon <guillaume.bertholon@ens.fr>",
+           "Nicolas Chataing <nicolas.chataing@ens.fr>"]
+
+[lib]
+crate-type = ["staticlib"]
+path = "kernel.rs"
+
+[dependencies]
+compiler_builtins = { git = "https://github.com/rust-lang-nursery/compiler-builtins" }
+rlibc = "1.0"
+rustberry_drivers = { path = "../drivers" }
+
+[features]
+pi2 = ["rustberry_drivers/pi2"]
+mini_uart = ["rustberry_drivers/mini_uart"]

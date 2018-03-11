@@ -1,20 +1,5 @@
-[package]
-name = "rustberry"
-version = "0.0.0"
-authors = ["Guillaume Bertholon <guillaume.bertholon@ens.fr>",
-           "Nicolas Chataing <nicolas.chataing@ens.fr>"]
-
-[lib]
-crate-type = ["staticlib"]
-path = "src/kernel.rs"
-
-[dependencies]
-compiler_builtins = { git = "https://github.com/rust-lang-nursery/compiler-builtins" }
-rlibc = "1.0"
-
-[features]
-pi2 = []
-mini_uart = []
+[workspace]
+members = ["kernel"]
 
 [profile.dev]
 panic = "abort"

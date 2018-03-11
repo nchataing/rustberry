@@ -1,6 +1,6 @@
 use mmio;
 use gpio;
-use uart::{Uart, Write};
+use drivers::uart::{Uart, Write};
 use core::fmt;
 
 #[lang = "panic_fmt"]

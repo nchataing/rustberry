@@ -6,14 +6,12 @@
 extern crate compiler_builtins;
 extern crate rlibc;
 
-mod mmio;
-mod gpio;
-mod uart;
-mod mailbox;
-mod framebuffer;
+extern crate rustberry_drivers as drivers;
+
 pub mod panic;
 
-use uart::{Uart, Write};
+use drivers::*;
+use drivers::uart::{Uart, Write};
 
 #[no_mangle]
 pub extern fn kernel_main(dummy : i32) -> !

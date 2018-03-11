@@ -1,12 +1,12 @@
 TARGET ?= pi2
 VERSION ?= release
-KERNEL = kernel
-SRC_DIR = src
-BUILD_DIR = target/$(TARGET)/$(VERSION)
 
-ASSEMBLY_OBJECTS = $(BUILD_DIR)/boot.o
-KERNEL_RUST_LIB = $(BUILD_DIR)/librustberry.a
-LINKER_SCRIPT = src/linker.ld
+BUILD_DIR = target/$(TARGET)/$(VERSION)
+KERNEL = kernel
+
+KERNEL_ASSEMBLY_OBJECTS = $(BUILD_DIR)/kernel/boot.o
+KERNEL_RUST_LIB = $(BUILD_DIR)/librustberry_kernel.a
+KERNEL_LINKER_SCRIPT = kernel/linker.ld
 
 QEMU_OPTIONS = -M raspi2 -serial stdio -display none -d "int,cpu_reset,unimp,guest_errors"
 
@@ -18,7 +18,7 @@ else
 endif
 XARGO_FLAGS = $(VERSION_FLAG) --features "$(TARGET) $(FEATURES)"
 
-all: $(BUILD_DIR)/$(KERNEL).img $(BUILD_DIR)/$(KERNEL).hex $(BUILD_DIR)/$(KERNEL).asm
+all: $(BUILD_DIR)/$(KERNEL).img $(BUILD_DIR)/$(KERNEL).asm
 
 run: $(BUILD_DIR)/$(KERNEL).elf
 	qemu-system-arm $(QEMU_OPTIONS) -kernel $<
@@ -30,22 +30,23 @@ gdb: $(BUILD_DIR)/$(KERNEL).elf
 clean:
 	rm -rf target
 
-$(BUILD_DIR)/$(KERNEL).asm: $(BUILD_DIR)/$(KERNEL).elf
+%.asm: %.elf
 	arm-none-eabi-objdump -D $< > $@
 
-$(BUILD_DIR)/$(KERNEL).hex: $(BUILD_DIR)/$(KERNEL).elf
+%.hex: %.elf
 	arm-none-eabi-objcopy $< -O ihex $@
 
-$(BUILD_DIR)/$(KERNEL).img: $(BUILD_DIR)/$(KERNEL).elf
+%.img: %.elf
 	arm-none-eabi-objcopy $< -O binary $@
 
-$(BUILD_DIR)/$(KERNEL).elf: xargo $(ASSEMBLY_OBJECTS)
-	arm-none-eabi-ld --gc-sections -T $(LINKER_SCRIPT) -o $@ $(ASSEMBLY_OBJECTS) $(KERNEL_RUST_LIB)
+$(BUILD_DIR)/$(KERNEL).elf: xargo/kernel $(KERNEL_ASSEMBLY_OBJECTS)
+	arm-none-eabi-ld --gc-sections -T $(KERNEL_LINKER_SCRIPT) -o $@ $(KERNEL_ASSEMBLY_OBJECTS) $(KERNEL_RUST_LIB)
 
-$(BUILD_DIR)/%.o: $(SRC_DIR)/%.s
+$(BUILD_DIR)/%.o: %.s
+	mkdir -p $(dir $@)
 	arm-none-eabi-as $(AS_FLAGS) $< -o $@
 
-xargo:
-	RUST_TARGET_PATH=$(shell pwd) xargo build --target $(TARGET) $(XARGO_FLAGS)
+xargo/%:
+	cd $(notdir $@) && RUST_TARGET_PATH=$(shell pwd) xargo build --target $(TARGET) $(XARGO_FLAGS)
 
-.PHONY: all clean run gdb xargo
+.PHONY: all kernel clean run gdb xargo/*
