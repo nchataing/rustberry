@@ -1,24 +1,25 @@
 TARGET ?= pi2
 VERSION ?= release
 
-BUILD_DIR = target/$(TARGET)/$(VERSION)
+BUILD_DIR = $(abspath target/$(TARGET)/$(VERSION))
 KERNEL = kernel
 BOOTLOADER = bootloader
 
-KERNEL_ASSEMBLY_OBJECTS = $(BUILD_DIR)/kernel/boot.o
-KERNEL_RUST_LIB = $(BUILD_DIR)/librustberry_kernel.a
+KERNEL_OBJECTS = $(BUILD_DIR)/kernel/boot.o $(BUILD_DIR)/librustberry_kernel.a
 KERNEL_LINKER_SCRIPT = kernel/kernel_link.ld
 
-BOOTLOADER_ASSEMBLY_OBJECTS = $(BUILD_DIR)/bootloader/boot.o
-BOOTLOADER_RUST_LIB = $(BUILD_DIR)/librustberry_bootloader.a
+BOOTLOADER_OBJECTS = $(BUILD_DIR)/bootloader/boot.o \
+					 $(BUILD_DIR)/librustberry_bootloader.a
 BOOTLOADER_LINKER_SCRIPT = bootloader/bootloader_link.ld
 
 QEMU_OPTIONS = -M raspi2 -serial stdio -display none -d "int,cpu_reset,unimp,guest_errors"
 
 ifeq ($(VERSION), release)
 	VERSION_FLAG = --release
-else
+else ifeq ($(VERSION), debug)
 	VERSION_FLAG =
+else
+	VERSION_FLAG = $(error Unknown VERSION: $(VERSION))
 endif
 XARGO_FLAGS = $(VERSION_FLAG) --features "$(TARGET) $(FEATURES)"
 
@@ -47,17 +48,19 @@ clean:
 %.img: %.elf
 	arm-none-eabi-objcopy $< -O binary $@
 
-$(BUILD_DIR)/$(KERNEL).elf: xargo/kernel $(KERNEL_ASSEMBLY_OBJECTS)
-	arm-none-eabi-ld --gc-sections -T $(KERNEL_LINKER_SCRIPT) -o $@ $(KERNEL_ASSEMBLY_OBJECTS) $(KERNEL_RUST_LIB)
+$(BUILD_DIR)/$(KERNEL).elf: $(KERNEL_OBJECTS)
+	arm-none-eabi-ld --gc-sections -T $(KERNEL_LINKER_SCRIPT) -o $@ $^
 
-$(BUILD_DIR)/$(BOOTLOADER).elf: xargo/bootloader $(BOOTLOADER_ASSEMBLY_OBJECTS)
-	arm-none-eabi-ld --gc-sections -T $(BOOTLOADER_LINKER_SCRIPT) -o $@ $(BOOTLOADER_ASSEMBLY_OBJECTS) $(BOOTLOADER_RUST_LIB)
+$(BUILD_DIR)/$(BOOTLOADER).elf: $(BOOTLOADER_OBJECTS)
+	arm-none-eabi-ld --gc-sections -T $(BOOTLOADER_LINKER_SCRIPT) -o $@ $^
 
 $(BUILD_DIR)/%.o: %.s
 	mkdir -p $(dir $@)
 	arm-none-eabi-as $(AS_FLAGS) $< -o $@
 
-xargo/%:
-	cd $(notdir $@) && RUST_TARGET_PATH=$(shell pwd) xargo build --target $(TARGET) $(XARGO_FLAGS)
+-include $(BUILD_DIR)/librustberry_*.d
+$(BUILD_DIR)/librustberry_%.a:
+	cd $* && RUST_TARGET_PATH=$(shell pwd) xargo build --target $(TARGET) \
+		$(XARGO_FLAGS)
 
-.PHONY: all kernel bootloader clean run gdb xargo/*
+.PHONY: all kernel bootloader clean run gdb
