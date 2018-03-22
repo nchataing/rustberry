@@ -37,7 +37,7 @@ use core::ptr::{read_volatile, write_volatile};
  * No memory access after the DMB can run until all memory accesses before it
  * have completed
  */
-pub fn mem_barrier()
+#[inline] pub fn mem_barrier()
 {
     unsafe
     {
@@ -50,7 +50,7 @@ pub fn mem_barrier()
  * No instruction after the DSB can run until all instructions before it have
  * completed
  */
-pub fn sync_barrier()
+#[inline] pub fn sync_barrier()
 {
     unsafe
     {
@@ -59,17 +59,34 @@ pub fn sync_barrier()
 }
 
 /**
- * Clean and invalidate entire cache
- * Flush pending writes to main memory
- * Remove all data in data cache
+ * Instruction Synchronization Barrier
+ * Flushes the pipeline in the processor, so that all instructions following
+ * the ISB are fetched from cache or memory.
  */
-pub fn flush_cache()
+#[inline] pub fn instr_barrier()
 {
     unsafe
     {
-        asm!(
-            "mcr p15, #0, $0, c7, c14, #1
-             mcr p15, #0, $0, c7, c14, #2"
-             :: "r"(0) :: "volatile")
+        asm!("isb" :::: "volatile")
     }
 }
+
+/// Waits until set_event is called from another core or an interruption occur.
+#[inline] pub fn wait_for_event()
+{
+    unsafe
+    {
+        asm!("wfe" :::: "volatile")
+    }
+}
+
+/// Wake up other processors if they are inside wait_for_event
+#[inline] pub fn set_event()
+{
+    unsafe
+    {
+        asm!("sev" :::: "volatile")
+    }
+}
+
+

@@ -1,7 +1,6 @@
 // To keep this in the first portion of the binary.
-.section ".text.boot"
+.section .text.boot
 
-// Make start global.
 .globl start
 
 // Entry point for the bootloader
@@ -18,19 +17,18 @@ start:
     // Call bootloader_main
     bl bootloader_main
 
-.section ".text"
+.section .text
 
 .globl reset
 
 other_core:
-    // Wait for signal at 0x2000 before reset
-    mov r1, #0x2000
-    mov r0, #0
-    str r0, [r1]
+    // Wait for signal at 0x4000 before reset
+    mov r1, #0x4000
 1:
+    wfe
     ldr r0, [r1]
     cmp r0, #0
-    beq 1b
+    bne 1b
 
 reset:
     // Invalidate data cache

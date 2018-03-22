@@ -8,6 +8,7 @@ extern crate rlibc;
 
 extern crate rustberry_drivers as drivers;
 use drivers::uart;
+use drivers::mmio;
 use core::ptr;
 
 extern "C"
@@ -70,8 +71,11 @@ pub extern fn bootloader_main() -> !
 
     unsafe
     {
-        let other_cores_reset_addr = 0x2000 as *mut u32;
-        ptr::write_volatile(other_cores_reset_addr, size);
+        let other_cores_reset_addr = 0x4000 as *mut u32;
+        ptr::write_volatile(other_cores_reset_addr, 0);
+
+        mmio::sync_barrier();
+        mmio::set_event();
 
         reset();
     }
