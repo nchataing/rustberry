@@ -1,27 +1,14 @@
 // To keep this in the first portion of the binary.
-.section ".text.boot"
+.section .text.boot
 
-// Make start global.
-.globl start
-
-// Interrupt vector table
-start:
-    b reset
-    b halt
-    b halt
-    b halt
-    b halt
-    nop // Reserved
-    b halt
-    b halt
-
-// Entry point for the kernel.
+.globl reset
+// Entry point for the kernel as a reset can be thought of as a restart.
 reset:
     // Halt all cores except one.
     mrc p15, #0, r4, c0, c0, #5
     and r4, r4, #3
     cmp r4, #0
-    bne halt
+    bne hang
 
     // Setup the stack.
     mov sp, #0x8000
@@ -53,6 +40,8 @@ reset:
     // Call kernel_main
     bl kernel_main
 
-halt:
-    wfe
-    b halt
+.globl hang
+// Wait forever
+hang:
+    wfi
+    b hang

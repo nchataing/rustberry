@@ -6,9 +6,11 @@ MEMORY
 
 SECTIONS
 {
-    .text.boot :
+    .text.start :
     {
-        KEEP(*(.text.boot))
+        start = .;
+        KEEP(*(.text.exception_vector))
+        *(.text.boot)
     } >start
 
     .text :

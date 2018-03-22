@@ -5,7 +5,8 @@ BUILD_DIR = $(abspath target/$(TARGET)/$(VERSION))
 KERNEL = kernel
 BOOTLOADER = bootloader
 
-KERNEL_OBJECTS = $(BUILD_DIR)/kernel/boot.o $(BUILD_DIR)/librustberry_kernel.a
+KERNEL_OBJECTS = $(BUILD_DIR)/kernel/boot.o $(BUILD_DIR)/kernel/exceptions.o \
+				 $(BUILD_DIR)/librustberry_kernel.a
 KERNEL_LINKER_SCRIPT = kernel/kernel_link.ld
 
 BOOTLOADER_OBJECTS = $(BUILD_DIR)/bootloader/boot.o \
