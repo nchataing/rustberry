@@ -34,14 +34,3 @@ pub extern fn data_abort_handler(instr_addr: usize, data_addr: usize,
            instr_addr, data_addr, status)
 }
 
-#[no_mangle]
-pub unsafe extern fn irq_handler()
-{
-    panic!("IRQ not handled yet !")
-}
-
-#[no_mangle]
-pub unsafe extern fn fiq_handler()
-{
-    panic!("Unexpected FIQ")
-}
