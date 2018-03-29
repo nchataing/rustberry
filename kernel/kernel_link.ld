@@ -1,7 +1,7 @@
 MEMORY
 {
     start : ORIGIN = 0x0, LENGTH = 0x100
-    kernel_prgm : ORIGIN = 0x8000, LENGTH = 0x18000
+    kernel_prgm : ORIGIN = 0x8000, LENGTH = 0x1F8000
 }
 
 SECTIONS
@@ -17,26 +17,26 @@ SECTIONS
     {
         *(.text*)
     } >kernel_prgm
-    . = ALIGN(4096);
 
-    .rodata :
+    .rodata ALIGN(4096) :
     {
         *(.rodata*)
         *(.data.rel.ro.*)
     } >kernel_prgm
-    . = ALIGN(4096);
 
-    .data :
+    .data ALIGN(4096) :
     {
         *(.data*)
     } >kernel_prgm
-    . = ALIGN(4096);
 
-    __bss_start = .;
-    .bss :
+    .bss ALIGN(4096) :
     {
+        __bss_start = .;
         *(.bss*)
-    } >kernel_prgm
-    __bss_end = .;
+        *(COMMON)
+        __bss_end = .;
+    } > kernel_prgm
+
     . = ALIGN(4096);
+    __end = .;
 }

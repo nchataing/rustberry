@@ -8,6 +8,12 @@ use core::fmt;
 pub extern fn panic_fmt(msg: fmt::Arguments, file: &'static str,
                         line: u32, column: u32) -> !
 {
+    unsafe
+    {
+        // Disable interruptions
+        asm!("cpsid if" :::: "volatile");
+    }
+
     let _ = write!(Uart,
                    "Kernel panic !\nFile {}, line {}, column {}:\n {}\n",
                    file, line, column, msg);
