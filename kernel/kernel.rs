@@ -44,8 +44,7 @@ pub extern fn kernel_main() -> !
     }
 
     mem::pages::init();
-    let page1 = mem::pages::allocate();
-
+    
     write!(Uart, "π = {}\n", core::f32::consts::PI).unwrap();
 
     let scr : u32;
