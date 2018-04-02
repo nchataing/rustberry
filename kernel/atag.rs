@@ -33,6 +33,9 @@ const ATAG_BASE : *const Header = 0x100 as *const Header;
 
 pub fn get_mem_size() -> usize
 {
+    #[cfg(feature = "no_atags")]
+    return 1 << 28;
+
     unsafe
     {
         let mut tag = ATAG_BASE;

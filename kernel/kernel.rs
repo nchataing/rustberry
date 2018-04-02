@@ -8,6 +8,8 @@ extern crate rlibc;
 
 extern crate rustberry_drivers as drivers;
 
+#[macro_use] mod linker_symbol;
+
 pub mod exceptions;
 pub mod interrupts;
 pub mod panic;
@@ -44,7 +46,9 @@ pub extern fn kernel_main() -> !
     }
 
     mem::pages::init();
-    
+    let test_page = mem::pages::allocate_page();
+    mem::pages::deallocate_page(test_page);
+
     write!(Uart, "π = {}\n", core::f32::consts::PI).unwrap();
 
     let scr : u32;

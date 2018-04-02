@@ -1,51 +1,52 @@
 use atag;
-use mem::pages::Section::*;
 
 const PAGE_SIZE : usize = 4096;
 const SECTION_SIZE : usize = 1024 * 1024;
 const PAGE_BY_SECTION : usize = SECTION_SIZE / PAGE_SIZE;
 
-extern
+linker_symbol!
 {
-    static __bss_start: u8;
-    static __bss_end: u8;
-    static __end: u8;
+    static __end;
 }
 
 #[derive(Clone, Copy)]
-enum Section
+struct Section
 {
-    Full,
-    Free(usize), // Next free section
-    Divided(usize,usize), // Nb page left, next divided section
+    free_pages: u16, // 0 -> Full, 256 -> Free, other -> Divided
+    next: u16, // Next divided section if Divided, next free section if Free
+    prev: u16, // Previous divided section if Divided
 }
+
+const FULL_SECTION : Section = Section { free_pages: 0, next: 0, prev: 0 };
 
 const MEM_SIZE_MAX : usize = 0x4000_0000; // 1 Go
 const NUM_SECTION_MAX : usize = MEM_SIZE_MAX / SECTION_SIZE;
 const NUM_PAGES_MAX : usize = MEM_SIZE_MAX / PAGE_SIZE;
 
-static mut SECTIONS : [Section; NUM_SECTION_MAX] = [Full; NUM_SECTION_MAX];
-static mut FST_FREE_SECTION : usize = 0;
-static mut FST_DIVIDED_SECTION : usize = 0;
+static mut SECTIONS : [Section; NUM_SECTION_MAX] = [FULL_SECTION; NUM_SECTION_MAX];
+static mut FST_FREE_SECTION : u16 = 0;
+static mut FST_DIVIDED_SECTION : u16 = 0;
 
-static mut PAGES : [u16; NUM_PAGES_MAX / 16] = [0xFFFF; NUM_PAGES_MAX / 16];
+static mut PAGES : [u16; NUM_PAGES_MAX / 16] = [0; NUM_PAGES_MAX / 16];
 
 pub fn init()
 {
+    let mem_size = atag::get_mem_size();
+    let kernel_sections = (linker_symbol!(__end) - 1) / SECTION_SIZE + 1;
+    let num_section = mem_size / SECTION_SIZE;
+
     unsafe
     {
-        let mem_size = 1 << 28;//atag::get_mem_size();
-        let kernel_sections = (&__end) as *const u8 as usize / SECTION_SIZE + 1;
-        let num_section = mem_size / SECTION_SIZE;
-
-        // From 0 to kernel_pages, SECTION[i] = Full
+        // From 0 to kernel_sections : SECTIONS[i] = FULL_SECTION
         for i in kernel_sections .. num_section - 1
         {
-            SECTIONS[i] = Free(i+1);
+            SECTIONS[i].free_pages = 256;
+            SECTIONS[i].next = (i+1) as u16;
         }
-        // For unavailable memory, SECTION[i] = Full
+        SECTIONS[num_section-1].free_pages = 256; // and next = 0
+        // Unavailable sections : SECTIONS[i] = FULL_SECTION
 
-        FST_FREE_SECTION = kernel_sections;
+        FST_FREE_SECTION = kernel_sections as u16;
         FST_DIVIDED_SECTION = 0;
     }
 }
@@ -55,15 +56,17 @@ pub fn allocate_section() -> usize
     unsafe
     {
         assert!(FST_FREE_SECTION != 0);
-        let section_nb = FST_FREE_SECTION;
-        match SECTIONS[FST_FREE_SECTION]
+
+        let section_nb = FST_FREE_SECTION as usize;
+        match SECTIONS[section_nb]
         {
-            Full | Divided(_,_) => panic!("Section already allocated"),
-            Free(next) => {
-                SECTIONS[FST_FREE_SECTION] = Full;
+            Section { free_pages: 256, next, .. } =>
+            {
+                SECTIONS[section_nb].free_pages = 0;
                 FST_FREE_SECTION = next;
                 // There is no need to update pages here
             }
+            _ => panic!("Section already allocated"),
         }
         section_nb
     }
@@ -75,11 +78,14 @@ pub fn deallocate_section(i : usize)
     {
         match SECTIONS[i]
         {
-            Full => (),
-            Free(_) | Divided(_,_) => panic!("")
+            Section { free_pages: 0, .. } => (),
+            Section { free_pages: 256, .. } =>
+                panic!("Deallocating free section {:#x}", i),
+            _ => panic!("Deallocating divided section {:#x}", i)
         }
-        SECTIONS[i] = Free(FST_FREE_SECTION);
-        FST_FREE_SECTION = i;
+        SECTIONS[i].free_pages = 256;
+        SECTIONS[i].next = FST_FREE_SECTION;
+        FST_FREE_SECTION = i as u16;
     }
 }
 
@@ -87,43 +93,40 @@ pub fn allocate_page() -> usize
 {
     unsafe
     {
-        assert!(FST_DIVIDED_SECTION != 0 || FST_FREE_SECTION != 0);
-        if FST_DIVIDED_SECTION == 0 
+        if FST_DIVIDED_SECTION == 0 && FST_FREE_SECTION == 0
+        {
+            panic!("No more memory available !");
+        }
+
+        if FST_DIVIDED_SECTION == 0
         {
             FST_DIVIDED_SECTION = FST_FREE_SECTION;
-            match SECTIONS[FST_FREE_SECTION]
-            {
-                Full | Divided(_,_) => panic!("No more memory available!"),
-                Free(next) => FST_FREE_SECTION = next
-            }
-            SECTIONS[FST_DIVIDED_SECTION] = Divided(256,0);
+            FST_FREE_SECTION = SECTIONS[FST_FREE_SECTION as usize].next;
+            SECTIONS[FST_DIVIDED_SECTION as usize].next = 0;
         }
 
         let mut allocated_page : usize = 0;
 
-        'outer : for page_group in 0 .. 16
+        'outer: for page_group in 0 .. 16
         {
-            let x = &PAGES[FST_DIVIDED_SECTION * 16 + page_group];
-            if *x != 0
+            let page_group_id = FST_DIVIDED_SECTION as usize * 16 + page_group;
+            let page = &mut PAGES[page_group_id];
+            if *page != 0xFFFF
             {
                 for i in 0 .. 16
                 {
-                    if x & (1 << i) != 0 
+                    if *page & (1 << i) == 0
                     {
-                        allocated_page = i + 16 * page_group 
-                            + PAGE_BY_SECTION * FST_DIVIDED_SECTION;
-                        PAGES[FST_DIVIDED_SECTION * 16 + page_group] = x & !(1<< i);
-                        match SECTIONS[FST_DIVIDED_SECTION]
+                        allocated_page = i + 16 * page_group_id;
+                        *page |= 1 << i;
+
+                        let section = &mut SECTIONS[FST_DIVIDED_SECTION as usize];
+                        section.free_pages -= 1;
+                        if section.free_pages == 0
                         {
-                            Full | Free (_) => panic!("Error\n"),
-                            Divided (page_left, next) => {
-                                SECTIONS[FST_DIVIDED_SECTION] = 
-                                    Divided(page_left-1, next);
-                                if page_left - 1 == 0 && next == 0 {
-                                    FST_DIVIDED_SECTION = 0;
-                                }
-                            }
+                            FST_DIVIDED_SECTION = section.next;
                         }
+
                         break 'outer;
                     }
                 }
@@ -137,32 +140,39 @@ pub fn deallocate_page(page_id: usize)
 {
     unsafe
     {
-        let section_id = page_id / PAGE_BY_SECTION;
-        let page_group = page_id / 16;
+        let section_id = (page_id / PAGE_BY_SECTION) as u16;
+        let section = &mut SECTIONS[section_id as usize];
+        let page_group = &mut PAGES[page_id / 16];
         let page_pos = page_id % 16;
 
-        match SECTIONS[section_id]
+        if *page_group & (1 << page_pos) == 0
         {
-            Full => panic!("Page {:#x} was deallocated in section {:#x}\n", 
-                            page_id, section_id),
-            Free (_) => panic!("Page {:#x} was never allocated\n", page_id),
-            Divided(page_left, next) => {
-                if (PAGES[page_group] & (1 << page_pos) != 0)
-                {
-                    panic!("Page {:#x} is not allocated\n", page_id);
-                }
-                PAGES[page_group] = PAGES[page_group] | (1 << page_pos);
-                let page_left = page_left + 1;
-                if page_left == 256
-                {
-                    SECTIONS[section_id] = Free (FST_FREE_SECTION);
-                    FST_FREE_SECTION = section_id;
-                }
-                else 
-                {
-                    SECTIONS[section_id] = Divided(page_left, next)
-                }
+            panic!("Page {:#x} is not allocated", page_id);
+        }
+        *page_group &= !(1 << page_pos);
+
+        section.free_pages += 1;
+        if section.free_pages == 1
+        {
+            section.next = FST_DIVIDED_SECTION;
+            SECTIONS[FST_DIVIDED_SECTION as usize].prev = section_id;
+            FST_DIVIDED_SECTION = section_id;
+        }
+        else if section.free_pages == 256
+        {
+            // Remove the section from the divided section list
+            if section_id == FST_DIVIDED_SECTION
+            {
+                FST_DIVIDED_SECTION = section.next;
             }
+            else
+            {
+                SECTIONS[section.prev as usize].next = section.next;
+            }
+
+            // Add it to free section list
+            section.next = FST_FREE_SECTION;
+            FST_FREE_SECTION = section_id as u16;
         }
     }
 }
