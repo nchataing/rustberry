@@ -25,9 +25,9 @@ pub extern fn panic_fmt(msg: fmt::Arguments, file: &'static str,
     {
         gpio::set_pin(35);
         gpio::clear_pin(47);
-        mmio::delay(1_000_000);
+        mmio::delay(100_000_000);
         gpio::clear_pin(35);
         gpio::set_pin(47);
-        mmio::delay(1_000_000);
+        mmio::delay(100_000_000);
     }
 }

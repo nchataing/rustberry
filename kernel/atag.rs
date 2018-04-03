@@ -33,9 +33,6 @@ const ATAG_BASE : *const Header = 0x100 as *const Header;
 
 pub fn get_mem_size() -> usize
 {
-    #[cfg(feature = "no_atags")]
-    return 1 << 28;
-
     unsafe
     {
         let mut tag = ATAG_BASE;
@@ -48,6 +45,8 @@ pub fn get_mem_size() -> usize
             }
             tag = (tag as *const usize).offset((*tag).size) as *const Header;
         }
-        return 0;
+
+        // QEMU do not fill ATAGs so we return a default value here (256M)
+        return 1 << 28;
     }
 }

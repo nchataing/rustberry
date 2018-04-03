@@ -31,7 +31,7 @@ pub extern fn bootloader_main() -> !
         size |= (byte as u32) << 8*i;
     }
 
-    if size > 0 && size <= 0x80000
+    if size > 0 && size <= 0x10_0000
     {
         uart::write_str("OK");
     }

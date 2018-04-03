@@ -1,8 +1,5 @@
 use atag;
-
-const PAGE_SIZE : usize = 4096;
-const SECTION_SIZE : usize = 1024 * 1024;
-const PAGE_BY_SECTION : usize = SECTION_SIZE / PAGE_SIZE;
+use mem::*;
 
 linker_symbol!
 {
@@ -18,10 +15,6 @@ struct Section
 }
 
 const FULL_SECTION : Section = Section { free_pages: 0, next: 0, prev: 0 };
-
-const MEM_SIZE_MAX : usize = 0x4000_0000; // 1 Go
-const NUM_SECTION_MAX : usize = MEM_SIZE_MAX / SECTION_SIZE;
-const NUM_PAGES_MAX : usize = MEM_SIZE_MAX / PAGE_SIZE;
 
 static mut SECTIONS : [Section; NUM_SECTION_MAX] = [FULL_SECTION; NUM_SECTION_MAX];
 static mut FST_FREE_SECTION : u16 = 0;

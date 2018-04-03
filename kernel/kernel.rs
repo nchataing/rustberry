@@ -1,5 +1,5 @@
 #![no_std]
-#![feature(asm, lang_items)]
+#![feature(asm, lang_items, const_fn)]
 #![allow(dead_code)]
 
 #![feature(compiler_builtins_lib)]
@@ -30,6 +30,8 @@ fn timer_handler()
 #[no_mangle]
 pub extern fn kernel_main() -> !
 {
+    mem::mmu::init();
+
     uart::init();
     write!(Uart, "Hello world !\n").unwrap();
 
@@ -48,6 +50,12 @@ pub extern fn kernel_main() -> !
     mem::pages::init();
     let test_page = mem::pages::allocate_page();
     mem::pages::deallocate_page(test_page);
+
+    unsafe
+    {
+        // The following operation must fail !
+        mmio::write(0 as *mut u32, 0);
+    }
 
     write!(Uart, "π = {}\n", core::f32::consts::PI).unwrap();
 

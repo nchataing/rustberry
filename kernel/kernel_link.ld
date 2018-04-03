@@ -1,7 +1,8 @@
 MEMORY
 {
     start : ORIGIN = 0x0, LENGTH = 0x100
-    kernel_prgm : ORIGIN = 0x8000, LENGTH = 0x1F8000
+    /* Kernel should occupy a section (check mem/mmu.rs if size increased) */
+    kernel_prgm : ORIGIN = 0x8000, LENGTH = 0xF8000
 }
 
 SECTIONS
@@ -15,17 +16,20 @@ SECTIONS
 
     .text :
     {
+        __text = .;
         *(.text*)
     } >kernel_prgm
 
     .rodata ALIGN(4096) :
     {
+        __rodata = .;
         *(.rodata*)
         *(.data.rel.ro.*)
     } >kernel_prgm
 
     .data ALIGN(4096) :
     {
+        __data = .;
         *(.data*)
     } >kernel_prgm
 
