@@ -1,10 +1,10 @@
 use drivers::mmio;
 use mem::*;
 
-#[repr(C, align(4096))]
+#[repr(C, align(0x2000))]
 pub struct SectionTable
 {
-    ttbl: [usize; 4096]
+    ttbl: [usize; 0x1000]
 }
 
 #[derive(Clone, Copy)]
@@ -64,7 +64,7 @@ impl SectionTable
 {
     pub const fn new() -> SectionTable
     {
-        SectionTable { ttbl: [0; 4096] }
+        SectionTable { ttbl: [0; 0x1000] }
     }
 
     pub fn unregister(&mut self, vaddr_base: usize)
@@ -98,17 +98,17 @@ impl SectionTable
     }
 }
 
-#[repr(C, align(1024))]
+#[repr(C, align(0x400))]
 pub struct PageTable
 {
-    ttbl: [usize; 256]
+    ttbl: [usize; 0x100]
 }
 
 impl PageTable
 {
     pub const fn new() -> PageTable
     {
-        PageTable { ttbl: [0; 256] }
+        PageTable { ttbl: [0; 0x100] }
     }
 
     pub fn unregister(&mut self, vaddr_offset: usize)
@@ -145,7 +145,7 @@ coproc_reg!
     TLBIALLIS : p15, c8, 0, c3, 0;
 }
 
-unsafe fn setup_ttbr0(translation_table: *const SectionTable)
+unsafe fn setup_kernel_table()
 {
     // Disable MMU, cache and branch prediction
     SCTLR::reset_bits(1 << 29 | 1 << 28 | 1 << 12 | 1 << 11 | 1 << 2 | 1 << 0);
@@ -158,6 +158,7 @@ unsafe fn setup_ttbr0(translation_table: *const SectionTable)
     mmio::sync_barrier();
 
     // Setup TTBCR, TTBR0 and DACR
+    let translation_table = &KERNEL_SECTION_TABLE as *const SectionTable;
     TTBCR::write(0);
     TTBR0::write(translation_table as u32 | 0b1001010);
     DACR::write(1);
@@ -260,6 +261,6 @@ pub fn init()
 
     unsafe
     {
-        setup_ttbr0(&KERNEL_SECTION_TABLE as *const SectionTable);
+        setup_kernel_table();
     }
 }
