@@ -132,32 +132,39 @@ impl PageTable
     }
 }
 
+coproc_reg!
+{
+    SCTLR : p15, c1, 0, c0, 0;
+    TTBR0 : p15, c2, 0, c0, 0;
+    TTBR1 : p15, c2, 0, c0, 1;
+    TTBCR : p15, c2, 0, c0, 2;
+    DACR  : p15, c3, 0, c0, 0;
+
+    ICIALLUIS : p15, c7, 0, c1, 0;
+    BPIALLIS  : p15, c7, 0, c1, 6;
+    TLBIALLIS : p15, c8, 0, c3, 0;
+}
+
 unsafe fn setup_ttbr0(translation_table: *const SectionTable)
 {
     // Disable MMU, cache and branch prediction
-    let mut sctlr : u32;
-    asm!("mrc p15, 0, $0, c1, c0, 0" : "=r"(sctlr));
-    sctlr &= !(1 << 29 | 1 << 28 | 1 << 12 | 1 << 11 | 1 << 2 | 1 << 0);
-    asm!("mcr p15, 0, $0, c1, c0, 0" :: "r"(sctlr) :: "volatile");
+    SCTLR::reset_bits(1 << 29 | 1 << 28 | 1 << 12 | 1 << 11 | 1 << 2 | 1 << 0);
 
     // Clean cache and TLB
-    asm!("mcr p15, 0, $0, c7, c1, 0
-          mcr p15, 0, $0, c8, c3, 0"
-          :: "r"(0) :: "volatile");
+    ICIALLUIS::write(0);
+    BPIALLIS::write(0);
+    TLBIALLIS::write(0);
 
     mmio::sync_barrier();
 
     // Setup TTBCR, TTBR0 and DACR
-    let ttbr0 = translation_table as usize | 0b1001010;
-    asm!("mcr p15, 0, $0, c2, c0, 2
-          mcr p15, 0, $1, c2, c0, 0
-          mcr p15, 0, $2, c3, c0, 0"
-          :: "r"(0), "r"(ttbr0), "r"(1) :: "volatile");
+    TTBCR::write(0);
+    TTBR0::write(translation_table as u32 | 0b1001010);
+    DACR::write(1);
 
-    // Setup SCTLR (enable Instruction cache, branch prediction (Z),
-    // SWp instruction, Cache, Alignment check, Mmu)
-    sctlr |= 1 << 12 | 1 << 11 | 1 << 10 | 1 << 2 | 1 << 1 | 1 << 0;
-    asm!("mcr p15, 0, $0, c1, c0, 0" :: "r"(sctlr) :: "volatile");
+    // Enable Instruction cache, branch prediction (Z),
+    // SWp instruction, Cache, Alignment check, Mmu
+    SCTLR::set_bits(1 << 12 | 1 << 11 | 1 << 10 | 1 << 2 | 1 << 1 | 1 << 0);
 
     mmio::sync_barrier();
 }

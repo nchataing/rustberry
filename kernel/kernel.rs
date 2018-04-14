@@ -9,6 +9,7 @@ extern crate rlibc;
 extern crate rustberry_drivers as drivers;
 
 #[macro_use] mod linker_symbol;
+#[macro_use] mod coproc_reg;
 
 pub mod exceptions;
 pub mod interrupts;
@@ -53,19 +54,12 @@ pub extern fn kernel_main() -> !
 
     unsafe
     {
-        // The following operation must fail !
+        // Each of the following operations must fail !
         mmio::write(0 as *mut u32, 0); // Data abort
         asm!("bx $0" :: "r"(0x2000) :: "volatile"); // Prefetch abort
     }
 
     write!(Uart, "π = {}\n", core::f32::consts::PI).unwrap();
-
-    let scr : u32;
-    unsafe
-    {
-        asm!("mrc p15, 0, $0, c1, c1, 0" : "=r"(scr));
-    }
-    write!(Uart, "Secure mode : {:b}\n", scr).unwrap();
 
     loop
     {
