@@ -15,7 +15,9 @@ pub extern fn panic_fmt(msg: fmt::Arguments, file: &'static str,
     }
 
     let _ = write!(Uart,
-                   "Kernel panic !\nFile {}, line {}, column {}:\n {}\n",
+                   "\x1b[31;1mKernel panic !\x1b[0m\n\
+                   File {}, line {}, column {}:\n\
+                   \x1b[1m{}\x1b[0m\n",
                    file, line, column, msg);
 
     gpio::select_pin_function(47, gpio::PinFunction::Output);

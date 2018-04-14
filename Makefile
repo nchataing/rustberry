@@ -14,7 +14,7 @@ BOOTLOADER_OBJECTS = $(BUILD_DIR)/bootloader/boot.o \
 BOOTLOADER_LINKER_SCRIPT = bootloader/bootloader_link.ld
 
 QEMU_OPTIONS = -M raspi2 -m 256 -serial stdio -display none \
-			   -d "int,cpu_reset,unimp,guest_errors,mmu"
+			   -d "int,unimp,guest_errors,mmu"
 
 ifeq ($(VERSION), release)
 	VERSION_FLAG = --release

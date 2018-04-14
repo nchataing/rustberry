@@ -31,6 +31,7 @@ software_interrupt:
 // Prefetch abort
 prefetch_abort:
     sub     r0, lr, #4
+    mrc     p15, 0, r1, c5, c0, 1
     cps     #0x13
     b       prefetch_abort_handler
 

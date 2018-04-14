@@ -33,7 +33,7 @@ pub extern fn kernel_main() -> !
     mem::mmu::init();
 
     uart::init();
-    write!(Uart, "Hello world !\n").unwrap();
+    write!(Uart, "\x1b[32;1mHello world !\x1b[0m\n").unwrap();
 
     let size = atag::get_mem_size();
     write!(Uart, "Memory size: {:#x}\n", size).unwrap();
@@ -54,7 +54,8 @@ pub extern fn kernel_main() -> !
     unsafe
     {
         // The following operation must fail !
-        mmio::write(0 as *mut u32, 0);
+        mmio::write(0 as *mut u32, 0); // Data abort
+        asm!("bx $0" :: "r"(0x2000) :: "volatile"); // Prefetch abort
     }
 
     write!(Uart, "π = {}\n", core::f32::consts::PI).unwrap();
