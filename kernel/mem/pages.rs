@@ -44,7 +44,7 @@ pub fn init()
     }
 }
 
-pub fn allocate_section() -> SectionId
+pub fn allocate_section() -> PhysSectionId
 {
     unsafe
     {
@@ -61,11 +61,11 @@ pub fn allocate_section() -> SectionId
             }
             _ => panic!("Section already allocated"),
         }
-        SectionId(section_nb)
+        PhysSectionId(section_nb)
     }
 }
 
-pub fn deallocate_section(i : SectionId)
+pub fn deallocate_section(i : PhysSectionId)
 {
     unsafe
     {
@@ -82,7 +82,7 @@ pub fn deallocate_section(i : SectionId)
     }
 }
 
-pub fn allocate_page() -> PageId
+pub fn allocate_page() -> PhysPageId
 {
     unsafe
     {
@@ -125,11 +125,11 @@ pub fn allocate_page() -> PageId
                 }
             }
         }
-        PageId(allocated_page)
+        PhysPageId(allocated_page)
     }
 }
 
-pub fn deallocate_page(page_id: PageId)
+pub fn deallocate_page(page_id: PhysPageId)
 {
     unsafe
     {

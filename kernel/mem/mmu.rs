@@ -1,5 +1,6 @@
 use drivers::mmio;
 use mem::*;
+use core::marker::PhantomData;
 
 #[derive(Clone, Copy)]
 pub enum RegionAttribute
@@ -54,35 +55,18 @@ pub struct RegionFlags
     pub attributes: RegionAttribute,
 }
 
-/**
- * Section table for virtual address mappings.
- * A section table can be used for the kernel or for an application.
- * If used as the kernel table, it maps the lower half virtual addresses
- * (between 0x0000_0000 and 0x7FFF_FFFF).
- * Else it maps the higher half virtual addresses (0x8000_0000 to 0xFFFF_FFFF)
- * as if all the given SectionId were increased by 0x800.
- */
-#[repr(C, align(0x2000))]
-pub struct SectionTable
+pub trait SectionTable<'a>
 {
-    ttbl: [usize; 0x800],
-}
+    fn set_entry(&mut self, index: usize, value: usize);
 
-impl SectionTable
-{
-    pub const fn new() -> SectionTable
+    fn unregister(&mut self, vaddr_base: VirtSectionId)
     {
-        SectionTable { ttbl: [0; 0x800] }
+        self.set_entry(vaddr_base.0, 0);
     }
 
-    pub fn unregister(&mut self, vaddr_base: SectionId)
-    {
-        self.ttbl[vaddr_base.0] = 0;
-    }
-
-    pub fn register_section(&mut self, vaddr_base: SectionId,
-                            paddr_base: SectionId, flags: &RegionFlags,
-                            kernel_execute: bool)
+    fn register_section(&mut self, vaddr_base: VirtSectionId,
+                        paddr_base: PhysSectionId, flags: &RegionFlags,
+                        kernel_execute: bool)
     {
         let mut entry = (paddr_base.0 << 20) | (1 << 1);
         if !flags.execute { entry |= 1 << 4; }
@@ -94,19 +78,77 @@ impl SectionTable
         entry |= (flags.attributes as usize & 0b11100) << (12-2);
         if !kernel_execute { entry |= 1 << 0; }
 
-        self.ttbl[vaddr_base.0] = entry;
+        self.set_entry(vaddr_base.0, entry);
     }
 
-    pub fn register_page_table(&mut self, vaddr_base: SectionId,
-                               page_table: *const PageTable,
-                               kernel_execute: bool)
+    fn register_page_table(&mut self, vaddr_base: VirtSectionId,
+                           page_table: &'a PageTable,
+                           kernel_execute: bool)
     {
-        let mut entry = page_table as usize | (1 << 0);
+        let mut entry = page_table as *const PageTable as usize | (1 << 0);
         if !kernel_execute { entry |= 1 << 2; }
-        self.ttbl[vaddr_base.0] = entry;
+        self.set_entry(vaddr_base.0, entry);
     }
 }
 
+/**
+ * Full section table for the kernel mappings. It maps all virtual addresses,
+ * and can be used alongside an ApplicationSectionTable (in this case, it is
+ * only used for addresses between 0x4000_0000 and 0xFFFF_FFFF).
+ */
+#[repr(C, align(0x2000))]
+pub struct KernelSectionTable<'a>
+{
+    ttbl: [usize; 0x1000],
+    phantom: PhantomData<&'a PageTable>
+}
+
+impl<'a> SectionTable<'a> for KernelSectionTable<'a>
+{
+    fn set_entry(&mut self, index: usize, value: usize)
+    {
+        self.ttbl[index] = value;
+    }
+}
+
+impl<'a> KernelSectionTable<'a>
+{
+    pub const fn new() -> KernelSectionTable<'a>
+    {
+        KernelSectionTable { ttbl: [0; 0x1000], phantom: PhantomData }
+    }
+}
+
+/**
+ * Small section table mapping addresses from 0x0000_0000 to 0x3FFF_FFFF,
+ * used for application-wide mappings.
+ */
+#[repr(C, align(0x1000))]
+pub struct ApplicationSectionTable<'a>
+{
+    ttbl: [usize; 0x400],
+    phantom: PhantomData<&'a PageTable>
+}
+
+impl<'a> SectionTable<'a> for ApplicationSectionTable<'a>
+{
+    fn set_entry(&mut self, index: usize, value: usize)
+    {
+        self.ttbl[index] = value;
+    }
+}
+
+impl<'a> ApplicationSectionTable<'a>
+{
+    pub const fn new() -> ApplicationSectionTable<'a>
+    {
+        ApplicationSectionTable { ttbl: [0; 0x400], phantom: PhantomData }
+    }
+}
+
+/**
+ * Page table that can be used inside a section table
+ */
 #[repr(C, align(0x400))]
 pub struct PageTable
 {
@@ -120,13 +162,13 @@ impl PageTable
         PageTable { ttbl: [0; 0x100] }
     }
 
-    pub fn unregister(&mut self, vaddr_offset: PageId)
+    pub fn unregister(&mut self, vaddr_offset: VirtPageId)
     {
         self.ttbl[vaddr_offset.0] = 0;
     }
 
-    pub fn register_page(&mut self, vaddr_offset: PageId, paddr_base: PageId,
-                         flags: &RegionFlags)
+    pub fn register_page(&mut self, vaddr_offset: VirtPageId,
+                         paddr_base: PhysPageId, flags: &RegionFlags)
     {
         let mut entry = (paddr_base.0 << 12) | (1 << 1);
         if !flags.execute { entry |= 1 << 0; }
@@ -149,7 +191,7 @@ coproc_reg!
     DACR  : p15, c3, 0, c0, 0;
 }
 
-pub unsafe fn setup_kernel_table(translation_table: *const SectionTable)
+pub unsafe fn setup_kernel_table(ttbl: &'static KernelSectionTable)
 {
     use system_control;
     use system_control::Features;
@@ -164,8 +206,10 @@ pub unsafe fn setup_kernel_table(translation_table: *const SectionTable)
     system_control::wipe_tlb();
     mmio::sync_barrier();
 
-    TTBCR::write(1); // Cut between TTBR0 and TTBR1 at 0x8000_0000
+    let translation_table = ttbl as *const KernelSectionTable;
+    TTBCR::write(2); // Cut between TTBR0 and TTBR1 at 0x4000_0000
     TTBR0::write(translation_table as u32 | 0b1001010);
+    TTBR1::write(translation_table as u32 | 0b1001010);
     DACR::write(1); // Use domain 0 only with access check
 
     system_control::enable(Features::MMU | Features::CACHE |

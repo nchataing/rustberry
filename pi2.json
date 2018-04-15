@@ -13,7 +13,7 @@
     "features": "-vfp2,-vfp3,-vfp4,-crypto,-neon,+soft-float,+strict-align",
 
     "executables": true,
-    "relocation_model": "static",
-    "position_independent_executables": false,
+    "relocation_model": "pic",
+    "position_independent_executables": true,
     "panic-strategy": "abort"
 }

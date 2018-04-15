@@ -2,7 +2,7 @@ use drivers::mmio;
 use mem::*;
 use mem::mmu::*;
 
-static mut KERNEL_SECTION_TABLE: SectionTable = SectionTable::new();
+static mut KERNEL_SECTION_TABLE: KernelSectionTable = KernelSectionTable::new();
 static mut KERNEL_PAGE_TABLE: PageTable = PageTable::new();
 
 linker_symbol!
@@ -47,39 +47,40 @@ pub fn init()
     let fst_data_page = linker_symbol!(__data) / PAGE_SIZE;
 
     // .text.start and ATAGS
-    pages.register_page(PageId(0), PageId(0), &kernel_text_flags);
+    pages.register_page(VirtPageId(0), PhysPageId(0), &kernel_text_flags);
 
     // Kernel stack
     for i in 1 .. fst_text_page
     {
-        pages.register_page(PageId(i), PageId(i), &kernel_data_flags);
+        pages.register_page(VirtPageId(i), PhysPageId(i), &kernel_data_flags);
     }
 
     // .text
     for i in fst_text_page .. fst_rodata_page
     {
-        pages.register_page(PageId(i), PageId(i), &kernel_text_flags);
+        pages.register_page(VirtPageId(i), PhysPageId(i), &kernel_text_flags);
     }
 
     // .rodata
     for i in fst_rodata_page .. fst_data_page
     {
-        pages.register_page(PageId(i), PageId(i), &kernel_rodata_flags);
+        pages.register_page(VirtPageId(i), PhysPageId(i), &kernel_rodata_flags);
     }
 
     // .data, .bss and after
     for i in fst_data_page .. PAGE_BY_SECTION
     {
-        pages.register_page(PageId(i), PageId(i), &kernel_data_flags);
+        pages.register_page(VirtPageId(i), PhysPageId(i), &kernel_data_flags);
     }
 
     // Use pages above
-    sections.register_page_table(SectionId(0), pages, true);
+    sections.register_page_table(VirtSectionId(0), pages, true);
+    sections.register_page_table(VirtSectionId(0x800), pages, true);
 
     // Standard data sections
     for i in 1 .. mmio::PERIPHERAL_BASE / SECTION_SIZE
     {
-        sections.register_section(SectionId(i), SectionId(i),
+        sections.register_section(VirtSectionId(i+0x800), PhysSectionId(i),
                                   &kernel_data_flags, false);
     }
 
@@ -89,27 +90,35 @@ pub fn init()
         attributes: RegionAttribute::Device };
     for i in mmio::PERIPHERAL_BASE / SECTION_SIZE .. NUM_SECTION_MAX
     {
-        sections.register_section(SectionId(i), SectionId(i),
+        sections.register_section(VirtSectionId(i+0x800), PhysSectionId(i),
                                   &periph_flags, false);
     }
 
     unsafe
     {
-        setup_kernel_table(&KERNEL_SECTION_TABLE as *const SectionTable);
+        setup_kernel_table(&KERNEL_SECTION_TABLE);
     }
 }
 
-const FIRST_HEAP_SECTION : SectionId = SectionId(0x600);
-static mut LAST_HEAP_SECTION : SectionId = FIRST_HEAP_SECTION;
+pub fn remove_temporary()
+{
+    unsafe
+    {
+        KERNEL_SECTION_TABLE.unregister(VirtSectionId(0));
+    }
+}
+
+const FIRST_HEAP_SECTION : VirtSectionId = VirtSectionId(0xD00);
+static mut LAST_HEAP_SECTION : VirtSectionId = FIRST_HEAP_SECTION;
 
 /**
  * Add heap memory for the kernel.
- * Kernel heap memory is mapped between 0x6000_0000 and 0x7FFF_FFFF.
+ * Kernel heap memory is mapped between 0xD000_0000 and 0xFFFF_FFFF.
  * It is composed by sections only (allocating page would require kernel heap).
  * This function returns the identifier of the first allocated section.
- * It panics if the requested memory goes above 0x7FFF_FFFF.
+ * It panics if the requested memory goes above 0xFFFF_FFFF.
  */
-pub unsafe fn reserve_kernel_heap_sections(nb: usize) -> SectionId
+pub unsafe fn reserve_kernel_heap_sections(nb: usize) -> VirtSectionId
 {
     let first_allocated_section = LAST_HEAP_SECTION;
     for _ in 0 .. nb

@@ -8,6 +8,7 @@ BOOTLOADER = bootloader
 KERNEL_OBJECTS = $(BUILD_DIR)/kernel/boot.o $(BUILD_DIR)/kernel/exceptions.o \
 				 $(BUILD_DIR)/librustberry_kernel.a
 KERNEL_LINKER_SCRIPT = kernel/kernel_link.ld
+KERNEL_LINKER_SCRIPT_GDB = kernel/kernel_link_gdb.ld
 
 BOOTLOADER_OBJECTS = $(BUILD_DIR)/bootloader/boot.o \
 					 $(BUILD_DIR)/librustberry_bootloader.a
@@ -34,9 +35,9 @@ bootloader: $(BUILD_DIR)/$(BOOTLOADER).img $(BUILD_DIR)/$(BOOTLOADER).asm
 run: $(BUILD_DIR)/$(KERNEL).elf
 	qemu-system-arm $(QEMU_OPTIONS) -kernel $<
 
-gdb: $(BUILD_DIR)/$(KERNEL).elf
+gdb: $(BUILD_DIR)/$(KERNEL).elf $(BUILD_DIR)/$(KERNEL).sym
 	qemu-system-arm $(QEMU_OPTIONS) -kernel $< -s -S & \
-	gdb-multiarch $< -ex 'target remote localhost:1234'
+	gdb-multiarch $(BUILD_DIR)/$(KERNEL).sym -ex 'target remote localhost:1234'
 
 clean:
 	rm -rf target
@@ -52,6 +53,10 @@ clean:
 
 $(BUILD_DIR)/$(KERNEL).elf: $(KERNEL_OBJECTS)
 	arm-none-eabi-ld --gc-sections -T $(KERNEL_LINKER_SCRIPT) -o $@ $^
+
+$(BUILD_DIR)/$(KERNEL).sym: $(KERNEL_OBJECTS)
+	arm-none-eabi-ld --gc-sections -T $(KERNEL_LINKER_SCRIPT_GDB) -o $@ $^
+	arm-none-eabi-objcopy --only-keep-debug $@
 
 $(BUILD_DIR)/$(BOOTLOADER).elf: $(BOOTLOADER_OBJECTS)
 	arm-none-eabi-ld --gc-sections -T $(BOOTLOADER_LINKER_SCRIPT) -o $@ $^

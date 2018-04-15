@@ -31,6 +31,15 @@ reset:
     cmp r4, r9
     blo 1b
 
+    // Call memory_init
+    bl memory_init
+
+    mov r0, #0x80000000
+    add sp, sp, r0
+    mcr p15, #0, r0, c12, c0, 0
+    add pc, pc, r0
+    nop
+
     // Call kernel_main
     bl kernel_main
 

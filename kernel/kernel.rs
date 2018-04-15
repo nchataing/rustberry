@@ -17,10 +17,10 @@ extern crate rustberry_drivers as drivers;
 pub mod exceptions;
 pub mod interrupts;
 pub mod panic;
+pub mod mem;
 mod system_timer;
 mod system_control;
 mod atag;
-mod mem;
 
 use drivers::*;
 use drivers::uart::{Uart, Write};
@@ -35,7 +35,7 @@ fn timer_handler()
 #[no_mangle]
 pub extern fn kernel_main() -> !
 {
-    mem::map::init();
+    mem::init();
 
     uart::init();
     write!(Uart, "\x1b[32;1mHello world !\x1b[0m\n").unwrap();
@@ -52,15 +52,11 @@ pub extern fn kernel_main() -> !
         asm!("svc 42" ::: "r0","r1","r2","r3","r12","lr","cc" : "volatile");
     }
 
-    mem::pages::init();
-    let test_page = mem::pages::allocate_page();
-    mem::pages::deallocate_page(test_page);
-
     unsafe
     {
         // Each of the following operations must fail !
-        mmio::write(0 as *mut u32, 0); // Data abort
         asm!("bx $0" :: "r"(0x2000) :: "volatile"); // Prefetch abort
+        mmio::write(0 as *mut u32, 0); // Data abort
     }
 
     write!(Uart, "π = {}\n", core::f32::consts::PI).unwrap();
