@@ -31,12 +31,6 @@ reset:
     cmp r4, r9
     blo 1b
 
-    // Enable FPU
-    //ldr r0, =(0xF << 20)
-    //mcr p15, 0, r0, c1, c0, 2
-    //mov r3, #0x40000000
-    //.long 0xeee83a10 // vmsr FPEXC, r3
-
     // Call kernel_main
     bl kernel_main
 

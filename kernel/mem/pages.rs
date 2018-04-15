@@ -44,7 +44,7 @@ pub fn init()
     }
 }
 
-pub fn allocate_section() -> usize
+pub fn allocate_section() -> SectionId
 {
     unsafe
     {
@@ -61,28 +61,28 @@ pub fn allocate_section() -> usize
             }
             _ => panic!("Section already allocated"),
         }
-        section_nb
+        SectionId(section_nb)
     }
 }
 
-pub fn deallocate_section(i : usize)
+pub fn deallocate_section(i : SectionId)
 {
     unsafe
     {
-        match SECTIONS[i]
+        match SECTIONS[i.0]
         {
             Section { free_pages: 0, .. } => (),
             Section { free_pages: 256, .. } =>
-                panic!("Deallocating free section {:#x}", i),
-            _ => panic!("Deallocating divided section {:#x}", i)
+                panic!("Deallocating free section {}", i),
+            _ => panic!("Deallocating divided section {}", i)
         }
-        SECTIONS[i].free_pages = 256;
-        SECTIONS[i].next = FST_FREE_SECTION;
-        FST_FREE_SECTION = i as u16;
+        SECTIONS[i.0].free_pages = 256;
+        SECTIONS[i.0].next = FST_FREE_SECTION;
+        FST_FREE_SECTION = i.0 as u16;
     }
 }
 
-pub fn allocate_page() -> usize
+pub fn allocate_page() -> PageId
 {
     unsafe
     {
@@ -125,22 +125,22 @@ pub fn allocate_page() -> usize
                 }
             }
         }
-        allocated_page
+        PageId(allocated_page)
     }
 }
 
-pub fn deallocate_page(page_id: usize)
+pub fn deallocate_page(page_id: PageId)
 {
     unsafe
     {
-        let section_id = (page_id / PAGE_BY_SECTION) as u16;
+        let section_id = (page_id.0 / PAGE_BY_SECTION) as u16;
         let section = &mut SECTIONS[section_id as usize];
-        let page_group = &mut PAGES[page_id / 16];
-        let page_pos = page_id % 16;
+        let page_group = &mut PAGES[page_id.0 / 16];
+        let page_pos = page_id.0 % 16;
 
         if *page_group & (1 << page_pos) == 0
         {
-            panic!("Page {:#x} is not allocated", page_id);
+            panic!("Page {} is not allocated", page_id);
         }
         *page_group &= !(1 << page_pos);
 

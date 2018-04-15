@@ -1,12 +1,6 @@
 use drivers::mmio;
 use mem::*;
 
-#[repr(C, align(0x2000))]
-pub struct SectionTable
-{
-    ttbl: [usize; 0x1000]
-}
-
 #[derive(Clone, Copy)]
 pub enum RegionAttribute
 {
@@ -53,29 +47,44 @@ pub enum RegionAccess
 
 pub struct RegionFlags
 {
-    execute: bool,
-    global: bool,
-    shareable: bool,
-    access: RegionAccess,
-    attributes: RegionAttribute,
+    pub execute: bool,
+    pub global: bool,
+    pub shareable: bool,
+    pub access: RegionAccess,
+    pub attributes: RegionAttribute,
+}
+
+/**
+ * Section table for virtual address mappings.
+ * A section table can be used for the kernel or for an application.
+ * If used as the kernel table, it maps the lower half virtual addresses
+ * (between 0x0000_0000 and 0x7FFF_FFFF).
+ * Else it maps the higher half virtual addresses (0x8000_0000 to 0xFFFF_FFFF)
+ * as if all the given SectionId were increased by 0x800.
+ */
+#[repr(C, align(0x2000))]
+pub struct SectionTable
+{
+    ttbl: [usize; 0x800],
 }
 
 impl SectionTable
 {
     pub const fn new() -> SectionTable
     {
-        SectionTable { ttbl: [0; 0x1000] }
+        SectionTable { ttbl: [0; 0x800] }
     }
 
-    pub fn unregister(&mut self, vaddr_base: usize)
+    pub fn unregister(&mut self, vaddr_base: SectionId)
     {
-        self.ttbl[vaddr_base] = 0;
+        self.ttbl[vaddr_base.0] = 0;
     }
 
-    pub fn register_section(&mut self, vaddr_base: usize, paddr_base: usize,
-                            flags: &RegionFlags, kernel_execute: bool)
+    pub fn register_section(&mut self, vaddr_base: SectionId,
+                            paddr_base: SectionId, flags: &RegionFlags,
+                            kernel_execute: bool)
     {
-        let mut entry = (paddr_base << 20) | (1 << 1);
+        let mut entry = (paddr_base.0 << 20) | (1 << 1);
         if !flags.execute { entry |= 1 << 4; }
         if !flags.global { entry |= 1 << 17; }
         if flags.shareable { entry |= 1 << 16; }
@@ -85,16 +94,16 @@ impl SectionTable
         entry |= (flags.attributes as usize & 0b11100) << (12-2);
         if !kernel_execute { entry |= 1 << 0; }
 
-        self.ttbl[vaddr_base] = entry;
+        self.ttbl[vaddr_base.0] = entry;
     }
 
-    pub fn register_page_table(&mut self, vaddr_base: usize,
+    pub fn register_page_table(&mut self, vaddr_base: SectionId,
                                page_table: *const PageTable,
                                kernel_execute: bool)
     {
         let mut entry = page_table as usize | (1 << 0);
         if !kernel_execute { entry |= 1 << 2; }
-        self.ttbl[vaddr_base] = entry;
+        self.ttbl[vaddr_base.0] = entry;
     }
 }
 
@@ -111,15 +120,15 @@ impl PageTable
         PageTable { ttbl: [0; 0x100] }
     }
 
-    pub fn unregister(&mut self, vaddr_offset: usize)
+    pub fn unregister(&mut self, vaddr_offset: PageId)
     {
-        self.ttbl[vaddr_offset] = 0;
+        self.ttbl[vaddr_offset.0] = 0;
     }
 
-    pub fn register_page(&mut self, vaddr_offset: usize, paddr_base: usize,
+    pub fn register_page(&mut self, vaddr_offset: PageId, paddr_base: PageId,
                          flags: &RegionFlags)
     {
-        let mut entry = (paddr_base << 12) | (1 << 1);
+        let mut entry = (paddr_base.0 << 12) | (1 << 1);
         if !flags.execute { entry |= 1 << 0; }
         if !flags.global { entry |= 1 << 11; }
         if flags.shareable { entry |= 1 << 10; }
@@ -128,139 +137,42 @@ impl PageTable
         entry |= (flags.attributes as usize & 0b011) << 2;
         entry |= (flags.attributes as usize & 0b100) << (6-2);
 
-        self.ttbl[vaddr_offset] = entry;
+        self.ttbl[vaddr_offset.0] = entry;
     }
 }
 
 coproc_reg!
 {
-    SCTLR : p15, c1, 0, c0, 0;
     TTBR0 : p15, c2, 0, c0, 0;
     TTBR1 : p15, c2, 0, c0, 1;
     TTBCR : p15, c2, 0, c0, 2;
     DACR  : p15, c3, 0, c0, 0;
-
-    ICIALLUIS : p15, c7, 0, c1, 0;
-    BPIALLIS  : p15, c7, 0, c1, 6;
-    TLBIALLIS : p15, c8, 0, c3, 0;
 }
 
-unsafe fn setup_kernel_table()
+pub unsafe fn setup_kernel_table(translation_table: *const SectionTable)
 {
-    // Disable MMU, cache and branch prediction
-    SCTLR::reset_bits(1 << 29 | 1 << 28 | 1 << 12 | 1 << 11 | 1 << 2 | 1 << 0);
+    use system_control;
+    use system_control::Features;
 
-    // Clean cache and TLB
-    ICIALLUIS::write(0);
-    BPIALLIS::write(0);
-    TLBIALLIS::write(0);
+    system_control::disable(Features::MMU | Features::CACHE |
+                            Features::BRANCH_PREDICTION |
+                            Features::INSTRUCTION_CACHE | Features::TEX_REMAP |
+                            Features::ACCESS_FLAG);
 
+    system_control::wipe_instr_cache();
+    system_control::wipe_branch_predictor();
+    system_control::wipe_tlb();
     mmio::sync_barrier();
 
-    // Setup TTBCR, TTBR0 and DACR
-    let translation_table = &KERNEL_SECTION_TABLE as *const SectionTable;
-    TTBCR::write(0);
+    TTBCR::write(1); // Cut between TTBR0 and TTBR1 at 0x8000_0000
     TTBR0::write(translation_table as u32 | 0b1001010);
-    DACR::write(1);
+    DACR::write(1); // Use domain 0 only with access check
 
-    // Enable Instruction cache, branch prediction (Z),
-    // SWp instruction, Cache, Alignment check, Mmu
-    SCTLR::set_bits(1 << 12 | 1 << 11 | 1 << 10 | 1 << 2 | 1 << 1 | 1 << 0);
-
+    system_control::enable(Features::MMU | Features::CACHE |
+                           Features::BRANCH_PREDICTION |
+                           Features::INSTRUCTION_CACHE |
+                           Features::SWP_INSTRUCTION |
+                           Features::ALIGNMENT_CHECK);
     mmio::sync_barrier();
 }
 
-static mut KERNEL_SECTION_TABLE: SectionTable = SectionTable::new();
-static mut KERNEL_PAGE_TABLE: PageTable = PageTable::new();
-
-linker_symbol!
-{
-    static __text;
-    static __rodata;
-    static __data;
-}
-
-/**
- * Create the kernel identity mapping.
- * All addresses below 0x4000_0000 are mapped to themselves.
- * They are accessible by kernel only.
- * All other addresses are unavailable.
- * This function also enables caches. As a consequence,
- * looping code is way faster after this function has been called.
- */
-pub fn init()
-{
-    let sections;
-    let pages;
-    unsafe
-    {
-        sections = &mut KERNEL_SECTION_TABLE;
-        pages = &mut KERNEL_PAGE_TABLE;
-    }
-
-    let kernel_text_flags = RegionFlags { execute: true, global: true,
-        shareable: false, access: RegionAccess::KernelReadOnly,
-        attributes: RegionAttribute::WriteAllocate };
-
-    let kernel_rodata_flags = RegionFlags { execute: false, global: true,
-        shareable: false, access: RegionAccess::KernelReadOnly,
-        attributes: RegionAttribute::WriteAllocate };
-
-    let kernel_data_flags = RegionFlags { execute: false, global: true,
-        shareable: true, access: RegionAccess::KernelOnly,
-        attributes: RegionAttribute::WriteAllocate };
-
-    let fst_text_page = linker_symbol!(__text) / PAGE_SIZE;
-    let fst_rodata_page = linker_symbol!(__rodata) / PAGE_SIZE;
-    let fst_data_page = linker_symbol!(__data) / PAGE_SIZE;
-
-    // .text.start and ATAGS
-    pages.register_page(0, 0, &kernel_text_flags);
-
-    // Kernel stack
-    for i in 1 .. fst_text_page
-    {
-        pages.register_page(i, i, &kernel_data_flags);
-    }
-
-    // .text
-    for i in fst_text_page .. fst_rodata_page
-    {
-        pages.register_page(i, i, &kernel_text_flags);
-    }
-
-    // .rodata
-    for i in fst_rodata_page .. fst_data_page
-    {
-        pages.register_page(i, i, &kernel_rodata_flags);
-    }
-
-    // .data, .bss and after
-    for i in fst_data_page .. PAGE_BY_SECTION
-    {
-        pages.register_page(i, i, &kernel_data_flags);
-    }
-
-    // Use pages above
-    sections.register_page_table(0, pages, true);
-
-    // Standard data sections
-    for i in 1 .. mmio::PERIPHERAL_BASE / SECTION_SIZE
-    {
-        sections.register_section(i, i, &kernel_data_flags, false);
-    }
-
-    // Peripheral sections
-    let periph_flags = RegionFlags { execute: false, global: true,
-        shareable: true, access: RegionAccess::KernelOnly,
-        attributes: RegionAttribute::Device };
-    for i in mmio::PERIPHERAL_BASE / SECTION_SIZE .. NUM_SECTION_MAX
-    {
-        sections.register_section(i, i, &periph_flags, false);
-    }
-
-    unsafe
-    {
-        setup_kernel_table();
-    }
-}

@@ -6,6 +6,9 @@
 extern crate compiler_builtins;
 extern crate rlibc;
 
+#[macro_use]
+extern crate bitflags;
+
 extern crate rustberry_drivers as drivers;
 
 #[macro_use] mod linker_symbol;
@@ -15,6 +18,7 @@ pub mod exceptions;
 pub mod interrupts;
 pub mod panic;
 mod system_timer;
+mod system_control;
 mod atag;
 mod mem;
 
@@ -31,7 +35,7 @@ fn timer_handler()
 #[no_mangle]
 pub extern fn kernel_main() -> !
 {
-    mem::mmu::init();
+    mem::map::init();
 
     uart::init();
     write!(Uart, "\x1b[32;1mHello world !\x1b[0m\n").unwrap();
