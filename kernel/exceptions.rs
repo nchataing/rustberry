@@ -1,4 +1,5 @@
 use core::ptr::read_volatile;
+use drivers;
 use drivers::uart::{Uart, Write};
 
 #[no_mangle]
@@ -78,3 +79,14 @@ pub extern fn data_abort_handler(instr_addr: usize, data_addr: usize,
            if cache { " (cache maintenance)" } else { "" }, fault_desc)
 }
 
+#[no_mangle]
+pub extern fn irq_handler()
+{
+    drivers::interrupts::handle_irq();
+}
+
+#[no_mangle]
+pub extern fn fiq_handler()
+{
+    drivers::interrupts::handle_fiq();
+}

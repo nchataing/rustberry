@@ -15,9 +15,7 @@ extern crate rustberry_drivers as drivers;
 #[macro_use] mod coproc_reg;
 
 pub mod exceptions;
-pub mod interrupts;
 pub mod panic;
-mod system_timer;
 mod system_control;
 mod atag;
 mod mem;
@@ -56,12 +54,12 @@ pub extern fn kernel_main() -> !
     let test_page = mem::pages::allocate_page();
     mem::pages::deallocate_page(test_page);
 
-    unsafe
+    /*unsafe
     {
         // Each of the following operations must fail !
         mmio::write(0 as *mut u32, 0); // Data abort
         asm!("bx $0" :: "r"(0x2000) :: "volatile"); // Prefetch abort
-    }
+    }*/
 
     write!(Uart, "π = {}\n", core::f32::consts::PI).unwrap();
 

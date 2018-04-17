@@ -1,4 +1,4 @@
-use drivers::mmio;
+use mmio;
 
 const INTERRUPT_BASE : usize = (mmio::PERIPHERAL_BASE + 0xB000);
 
@@ -94,33 +94,35 @@ pub fn unregister_irq(id: u32)
     }
 }
 
-#[no_mangle]
-pub unsafe extern fn irq_handler()
+pub fn handle_irq()
 {
-    let gpu1_irq = mmio::read(IRQ_GPU1_PENDING);
-    for i in 0..32
+    unsafe
     {
-        if gpu1_irq & (1 << i) != 0
+        let gpu1_irq = mmio::read(IRQ_GPU1_PENDING);
+        for i in 0..32
         {
-            IRQ_HANDLERS[i]();
+            if gpu1_irq & (1 << i) != 0
+            {
+                IRQ_HANDLERS[i]();
+            }
         }
-    }
 
-    let gpu2_irq = mmio::read(IRQ_GPU2_PENDING);
-    for i in 32..64
-    {
-        if gpu2_irq & (1 << (i-32)) != 0
+        let gpu2_irq = mmio::read(IRQ_GPU2_PENDING);
+        for i in 32..64
         {
-            IRQ_HANDLERS[i]();
+            if gpu2_irq & (1 << (i-32)) != 0
+            {
+                IRQ_HANDLERS[i]();
+            }
         }
-    }
 
-    let basic_irq = mmio::read(IRQ_BASIC_PENDING);
-    for i in 64..72
-    {
-        if basic_irq & (1 << (i-64)) != 0
+        let basic_irq = mmio::read(IRQ_BASIC_PENDING);
+        for i in 64..72
         {
-            IRQ_HANDLERS[i]();
+            if basic_irq & (1 << (i-64)) != 0
+            {
+                IRQ_HANDLERS[i]();
+            }
         }
     }
 }
@@ -146,8 +148,10 @@ pub fn unregister_fiq()
     }
 }
 
-#[no_mangle]
-pub unsafe extern fn fiq_handler()
+pub fn handle_fiq()
 {
-    FIQ_HANDLER()
+    unsafe
+    {
+        FIQ_HANDLER()
+    }
 }

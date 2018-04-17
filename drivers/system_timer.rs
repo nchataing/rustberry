@@ -1,4 +1,4 @@
-use drivers::mmio;
+use mmio;
 use interrupts;
 
 const TIMER_BASE : usize = (mmio::PERIPHERAL_BASE + 0x3000);
