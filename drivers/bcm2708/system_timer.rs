@@ -1,7 +1,8 @@
 use mmio;
-use interrupts;
+use bcm2708;
+use bcm2708::interrupts;
 
-const TIMER_BASE : usize = (mmio::PERIPHERAL_BASE + 0x3000);
+const TIMER_BASE : usize = (bcm2708::PERIPHERAL_BASE + 0x3000);
 
 const TIMER_STATUS : *mut u32 = (TIMER_BASE + 0x00) as *mut u32;
 const TIMER_LOW    : *mut u32 = (TIMER_BASE + 0x04) as *mut u32;

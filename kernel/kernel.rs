@@ -9,10 +9,9 @@ extern crate rlibc;
 #[macro_use]
 extern crate bitflags;
 
-extern crate rustberry_drivers as drivers;
+#[macro_use] extern crate rustberry_drivers as drivers;
 
 #[macro_use] mod linker_symbol;
-#[macro_use] mod coproc_reg;
 
 pub mod exceptions;
 pub mod panic;

@@ -1,6 +1,7 @@
 use mmio;
+use bcm2708;
 
-const INTERRUPT_BASE : usize = (mmio::PERIPHERAL_BASE + 0xB000);
+const INTERRUPT_BASE : usize = (bcm2708::PERIPHERAL_BASE + 0xB000);
 
 const IRQ_BASIC_PENDING : *const u32 = (INTERRUPT_BASE + 0x200) as *const u32;
 const IRQ_GPU1_PENDING  : *const u32 = (INTERRUPT_BASE + 0x204) as *const u32;

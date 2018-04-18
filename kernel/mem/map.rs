@@ -1,4 +1,5 @@
 use drivers::mmio;
+use atag;
 use mem::*;
 use mem::mmu::*;
 
@@ -77,7 +78,9 @@ pub fn init()
     sections.register_page_table(SectionId(0), pages, true);
 
     // Standard data sections
-    for i in 1 .. mmio::PERIPHERAL_BASE / SECTION_SIZE
+    let memory_size = atag::get_mem_size();
+    let nb_ram_sections = memory_size / SECTION_SIZE;
+    for i in 1 .. nb_ram_sections
     {
         sections.register_section(SectionId(i), SectionId(i),
                                   &kernel_data_flags, false);
@@ -87,7 +90,7 @@ pub fn init()
     let periph_flags = RegionFlags { execute: false, global: true,
         shareable: true, access: RegionAccess::KernelOnly,
         attributes: RegionAttribute::Device };
-    for i in mmio::PERIPHERAL_BASE / SECTION_SIZE .. NUM_SECTION_MAX
+    for i in nb_ram_sections .. FIRST_VIRTUAL_SECTION
     {
         sections.register_section(SectionId(i), SectionId(i),
                                   &periph_flags, false);

@@ -1,4 +1,4 @@
-use mailbox;
+use super::mailbox;
 
 #[repr(C, align(128))]
 #[derive(Debug)]

@@ -1,7 +1,13 @@
+/*!
+ * This is the driver for the VC/ARM mailbox drivers.
+ * It is intended for communications with the VC GPU.
+ */
+
 use mmio;
+use bcm2708;
 
 /// Mailbox 0 base address (Read by ARM)
-const MAIL0_BASE : usize = mmio::PERIPHERAL_BASE + 0xB880;
+const MAIL0_BASE : usize = bcm2708::PERIPHERAL_BASE + 0xB880;
 
 const MAIL0_READ   : *mut u32 = (MAIL0_BASE + 0x00) as *mut u32;
 const MAIL0_PEAK   : *mut u32 = (MAIL0_BASE + 0x10) as *mut u32;

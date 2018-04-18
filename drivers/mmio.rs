@@ -1,9 +1,5 @@
 use core::ptr::{read_volatile, write_volatile};
 
-/// The peripheral base address.
-#[cfg(feature = "pi2")] pub const PERIPHERAL_BASE : usize = 0x3F000000;
-#[cfg(feature = "pi1")] pub const PERIPHERAL_BASE : usize = 0x20000000;
-
 /// Memory mapped read
 #[inline] pub unsafe fn read(reg: *const u32) -> u32
 {

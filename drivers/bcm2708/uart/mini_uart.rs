@@ -1,8 +1,9 @@
 use mmio;
-use gpio;
+use bcm2708;
+use bcm2708::gpio;
 pub use core::fmt::{Write, Result};
 
-const AUX_BASE : usize = mmio::PERIPHERAL_BASE + 0x215000;
+const AUX_BASE : usize = bcm2708::PERIPHERAL_BASE + 0x215000;
 
 const AUX_ENABLES     : *mut u32 = (AUX_BASE + 0x04) as *mut u32;
 const AUX_MU_IO_REG   : *mut u32 = (AUX_BASE + 0x40) as *mut u32;
