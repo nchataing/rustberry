@@ -20,3 +20,4 @@ pub fn get_core_id() -> u8
 }
 
 pub mod interrupts;
+pub mod mailbox;

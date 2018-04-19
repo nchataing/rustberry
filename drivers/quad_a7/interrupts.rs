@@ -18,6 +18,13 @@ pub fn handle_irq()
     let irq_source_reg = (IRQ_SOURCE_BASE + 4*proc_id) as *const u32;
     let irq_source = unsafe { mmio::read(irq_source_reg) };
 
+    for mailbox_id in 0 .. 4
+    {
+        if irq_source & (1 << (mailbox_id + 4)) != 0
+        {
+            quad_a7::mailbox::handle_interrupt(mailbox_id);
+        }
+    }
     if irq_source & (1 << 8) != 0
     {
         bcm2708::interrupts::handle_irq();
@@ -30,6 +37,13 @@ pub fn handle_fiq()
     let fiq_source_reg = (FIQ_SOURCE_BASE + 4*proc_id) as *const u32;
     let fiq_source = unsafe { mmio::read(fiq_source_reg) };
 
+    for mailbox_id in 0 .. 4
+    {
+        if fiq_source & (1 << (mailbox_id + 4)) != 0
+        {
+            quad_a7::mailbox::handle_interrupt(mailbox_id);
+        }
+    }
     if fiq_source & (1 << 8) != 0
     {
         bcm2708::interrupts::handle_fiq();
