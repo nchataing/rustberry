@@ -6,8 +6,7 @@
  */
 
 /// The BCM 2708 peripheral base address.
-#[cfg(feature = "pi2")] pub const PERIPHERAL_BASE : usize = 0x3F00_0000;
-#[cfg(feature = "pi1")] pub const PERIPHERAL_BASE : usize = 0x2000_0000;
+pub const PERIPHERAL_BASE : usize = 0x3F00_0000;
 
 pub mod gpio;
 pub mod uart;

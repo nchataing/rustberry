@@ -35,10 +35,7 @@ use core::ptr::{read_volatile, write_volatile};
  */
 #[inline] pub fn mem_barrier()
 {
-    unsafe
-    {
-        asm!("dmb" :::: "volatile")
-    }
+    unsafe { asm!("dmb" ::: "memory" : "volatile") }
 }
 
 /**
@@ -48,10 +45,7 @@ use core::ptr::{read_volatile, write_volatile};
  */
 #[inline] pub fn sync_barrier()
 {
-    unsafe
-    {
-        asm!("dsb" :::: "volatile")
-    }
+    unsafe { asm!("dsb" ::: "memory" : "volatile") }
 }
 
 /**
@@ -61,28 +55,18 @@ use core::ptr::{read_volatile, write_volatile};
  */
 #[inline] pub fn instr_barrier()
 {
-    unsafe
-    {
-        asm!("isb" :::: "volatile")
-    }
+    unsafe { asm!("isb" ::: "memory" : "volatile") }
 }
 
 /// Waits until set_event is called from another core or an interruption occur.
 #[inline] pub fn wait_for_event()
 {
-    unsafe
-    {
-        asm!("wfe" :::: "volatile")
-    }
+    unsafe { asm!("wfe" ::: "memory" : "volatile") }
 }
 
 /// Wake up other processors if they are inside wait_for_event
 #[inline] pub fn set_event()
 {
-    unsafe
-    {
-        asm!("sev" :::: "volatile")
-    }
+    unsafe { asm!("sev" :::: "volatile") }
 }
-
 

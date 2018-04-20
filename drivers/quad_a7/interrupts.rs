@@ -15,6 +15,39 @@ const GPU_INTERRUPT_ROUTING : *mut u32 = (quad_a7::PERIPHERAL_BASE + 0x0C) as *m
 pub fn init()
 {
     bcm2708::interrupts::init();
+    enable_all();
+}
+
+pub fn enable_irq()
+{
+    unsafe { asm!("cpsie i" :::: "volatile") }
+}
+
+pub fn disable_irq()
+{
+    unsafe { asm!("cpsid i" :::: "volatile") }
+}
+
+pub fn enable_fiq()
+{
+    unsafe { asm!("cpsie f" :::: "volatile") }
+}
+
+pub fn disable_fiq()
+{
+    unsafe { asm!("cpsid f" :::: "volatile") }
+}
+
+/// Enable IRQ and FIQ
+pub fn enable_all()
+{
+    unsafe { asm!("cpsie if" :::: "volatile") }
+}
+
+/// Disable IRQ and FIQ
+pub fn disable_all()
+{
+    unsafe { asm!("cpsid if" :::: "volatile") }
 }
 
 pub fn handle_irq()

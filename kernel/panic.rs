@@ -1,5 +1,6 @@
 use mmio;
 use gpio;
+use interrupts;
 use drivers::uart::{Uart, Write};
 use core::fmt;
 
@@ -8,11 +9,7 @@ use core::fmt;
 pub extern fn panic_fmt(msg: fmt::Arguments, file: &'static str,
                         line: u32, column: u32) -> !
 {
-    unsafe
-    {
-        // Disable interruptions
-        asm!("cpsid if" :::: "volatile");
-    }
+    interrupts::disable_all();
 
     let _ = write!(Uart,
                    "\x1b[31;1mKernel panic !\x1b[0m\n\

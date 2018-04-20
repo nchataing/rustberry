@@ -41,9 +41,6 @@ pub fn init()
 
         // Also disable FIQ
         mmio::write(FIQ_CONTROL, 0);
-
-        // Enable interrupts on ARM side
-        asm!("cpsie if" :::: "volatile");
     }
 }
 
