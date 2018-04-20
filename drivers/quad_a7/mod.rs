@@ -11,6 +11,10 @@ coproc_reg!
     MPIDR : p15, c0, 0, c0, 5;
 }
 
+/**
+ * Return the id of the current running core.
+ * It should be between 0 and 3 on a Raspberry Pi 2.
+ */
 pub fn get_core_id() -> u8
 {
     unsafe
@@ -21,3 +25,4 @@ pub fn get_core_id() -> u8
 
 pub mod interrupts;
 pub mod mailbox;
+pub mod core_timer;

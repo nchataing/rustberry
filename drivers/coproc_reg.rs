@@ -1,5 +1,5 @@
 /**
- * This is the interface of an ARM coprocessor register.
+ * This is the interface of an ARM coprocessor 32 bit register.
  * This trait can be automatically derived by the coproc_reg! macro.
  */
 pub trait CoprocRegister
@@ -18,6 +18,16 @@ pub trait CoprocRegister
         let val = Self::read() & !bitmask;
         Self::write(val);
     }
+}
+
+/**
+ * This is the interface of an ARM coprocessor 64 bit register.
+ * This trait can be automatically derived by the coproc_reg64! macro.
+ */
+pub trait CoprocRegister64
+{
+    unsafe fn read() -> u64;
+    unsafe fn write(val: u64);
 }
 
 /**
@@ -47,7 +57,7 @@ macro_rules! coproc_reg
                           $crm: ident, $opc2: expr; )* } =>
     {
         use coproc_reg::CoprocRegister;
-        $( struct $reg_id;
+        $( #[allow(non_camel_case_types)] struct $reg_id;
         impl CoprocRegister for $reg_id
         {
             unsafe fn read() -> u32
@@ -66,6 +76,36 @@ macro_rules! coproc_reg
                              $opc1, ", $0, ", stringify!($crn),
                              ", ", stringify!($crm), ", ", $opc2)
                      :: "r"(val) :: "volatile");
+            }
+        } )*
+    }
+}
+
+/// Same as `coproc_reg!` but for 64 bit registers.
+#[macro_export]
+macro_rules! coproc_reg64
+{
+    { $( $reg_id: ident : $coproc: ident, $crn: ident, $opc1: expr; )* } =>
+    {
+        use coproc_reg::CoprocRegister64;
+        $( #[allow(non_camel_case_types)] struct $reg_id;
+        impl CoprocRegister64 for $reg_id
+        {
+            unsafe fn read() -> u64
+            {
+                let low : u32;
+                let high : u32;
+                asm!(concat!("mrrc ", stringify!($coproc), ", ",
+                             $opc1, ", $0, $1, ", stringify!($crn))
+                     : "=r"(low), "=r"(high));
+                (high as u64) << 32 | low as u64
+            }
+
+            unsafe fn write(val: u64)
+            {
+                asm!(concat!("mcrr ", stringify!($coproc), ", ",
+                             $opc1, ", $0, $1, ", stringify!($crn))
+                     :: "r"(val as u32), "r"((val >> 32) as u32) :: "volatile");
             }
         } )*
     }

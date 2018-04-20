@@ -21,9 +21,8 @@ use drivers::uart::{Uart, Write};
 
 fn timer_handler()
 {
-    system_timer::clear_irq(system_timer::Timer1);
     write!(Uart, ".").unwrap();
-    system_timer::set_remaining_time(system_timer::Timer1, 1_000_000);
+    core_timer::set_remaining_time(core_timer::Physical, 10_000_000);
 }
 
 #[no_mangle]
@@ -38,8 +37,10 @@ pub extern fn kernel_main() -> !
     write!(Uart, "Memory size: {:#x}\n", size).unwrap();
 
     interrupts::init();
-    system_timer::register_callback(system_timer::Timer1, timer_handler);
-    system_timer::set_remaining_time(system_timer::Timer1, 1_000_000);
+    core_timer::init();
+    core_timer::register_callback(core_timer::Physical, timer_handler, false);
+    core_timer::set_enabled(core_timer::Physical, true);
+    core_timer::set_remaining_time(core_timer::Physical, 10_000_000);
 
     unsafe
     {
