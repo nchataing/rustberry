@@ -60,6 +60,12 @@ pub extern fn kernel_main() -> !
 
     write!(Uart, "π = {}\n", core::f32::consts::PI).unwrap();
 
+    random::init();
+    for _ in 0..10
+    {
+        write!(Uart, "Random -> {}\n", random::generate()).unwrap();
+    }
+
     loop
     {
         let c = uart::read_byte();
