@@ -8,7 +8,9 @@ authors = ["Guillaume Bertholon <guillaume.bertholon@ens.fr>",
 crate-type = ["rlib"]
 path = "lib.rs"
 
+[dependencies]
+bitflags = "1"
+
 [features]
 pi2 = []
 mini_uart = []
-

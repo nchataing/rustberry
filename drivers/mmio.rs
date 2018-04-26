@@ -29,6 +29,30 @@ use core::ptr::{read_volatile, write_volatile};
 }
 
 /**
+ * Wait while the condition is true and the timeout has not expired
+ * (timeout is given in a small multiple of cpu cycles).
+ * Return the condition state after the loop (ie true if timout,
+ * false if condition turned false).
+ */
+#[macro_export]
+macro_rules! timeout_wait_while
+{
+    ($cond: expr, $timeout: expr) =>
+    {{
+        let mut time_left = $timeout;
+        while $cond
+        {
+            time_left -= 1;
+            if time_left == 0
+            {
+                break;
+            }
+        }
+        $cond
+    }}
+}
+
+/**
  * Data memory barrier
  * No memory access after the DMB can run until all memory accesses before it
  * have completed

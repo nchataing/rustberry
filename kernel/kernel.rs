@@ -37,6 +37,20 @@ pub extern fn kernel_main() -> !
     write!(Uart, "Memory size: {:#x}\n", size).unwrap();
 
     interrupts::init();
+
+    let sdcard = emmc::init().unwrap();
+    let mut first_sdblock = [0; emmc::BLOCK_SIZE];
+    sdcard.read(&mut first_sdblock, 0).unwrap();
+    write!(Uart, "First SD card block:\n").unwrap();
+    for chunk in first_sdblock.chunks(16)
+    {
+        for val in chunk
+        {
+            write!(Uart, "{:02x}, ", val).unwrap();
+        }
+        write!(Uart, "\n").unwrap();
+    }
+
     core_timer::init();
     core_timer::register_callback(core_timer::Physical, timer_handler, false);
     core_timer::set_enabled(core_timer::Physical, true);
@@ -61,10 +75,7 @@ pub extern fn kernel_main() -> !
     write!(Uart, "π = {}\n", core::f32::consts::PI).unwrap();
 
     random::init();
-    for _ in 0..10
-    {
-        write!(Uart, "Random -> {}\n", random::generate()).unwrap();
-    }
+    write!(Uart, "Random -> {:#08x}\n", random::generate()).unwrap();
 
     loop
     {

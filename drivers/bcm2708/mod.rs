@@ -14,3 +14,4 @@ pub mod video_core;
 pub mod interrupts;
 pub mod system_timer;
 pub mod random;
+pub mod emmc;
