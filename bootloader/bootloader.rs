@@ -2,10 +2,6 @@
 #![feature(asm, lang_items)]
 #![allow(dead_code)]
 
-#![feature(compiler_builtins_lib)]
-extern crate compiler_builtins;
-extern crate rlibc;
-
 extern crate rustberry_drivers as drivers;
 use drivers::uart;
 use drivers::mmio;

@@ -9,8 +9,6 @@ crate-type = ["staticlib"]
 path = "kernel.rs"
 
 [dependencies]
-compiler_builtins = { git = "https://github.com/rust-lang-nursery/compiler-builtins" }
-rlibc = "1.0"
 bitflags = "1"
 rustberry_drivers = { path = "../drivers" }
 

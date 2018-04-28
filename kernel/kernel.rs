@@ -2,9 +2,6 @@
 #![feature(asm, lang_items, const_fn)]
 #![allow(dead_code)]
 
-#![feature(compiler_builtins_lib)]
-extern crate compiler_builtins;
-extern crate rlibc;
 #[macro_use] extern crate bitflags;
 
 #[macro_use] extern crate rustberry_drivers as drivers;
