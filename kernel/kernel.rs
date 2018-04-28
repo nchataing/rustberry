@@ -14,11 +14,10 @@ mod atag;
 mod mem;
 
 use drivers::*;
-use drivers::uart::{Uart, Write};
 
 fn timer_handler()
 {
-    write!(Uart, ".").unwrap();
+    print!(".");
     core_timer::set_remaining_time(core_timer::Physical, 10_000_000);
 }
 
@@ -28,24 +27,24 @@ pub extern fn kernel_main() -> !
     mem::map::init();
 
     uart::init();
-    write!(Uart, "\x1b[32;1mHello world !\x1b[0m\n").unwrap();
+    println!("\x1b[32;1mHello world !\x1b[0m");
 
     let size = atag::get_mem_size();
-    write!(Uart, "Memory size: {:#x}\n", size).unwrap();
+    println!("Memory size: {:#x}", size);
 
     interrupts::init();
 
     let sdcard = emmc::init().unwrap();
     let mut first_sdblock = [0; emmc::BLOCK_SIZE];
     sdcard.read(&mut first_sdblock, 0).unwrap();
-    write!(Uart, "First SD card block:\n").unwrap();
+    println!("First SD card block:");
     for chunk in first_sdblock.chunks(16)
     {
         for val in chunk
         {
-            write!(Uart, "{:02x}, ", val).unwrap();
+            print!("{:02x}, ", val);
         }
-        write!(Uart, "\n").unwrap();
+        print!("\n");
     }
 
     core_timer::init();
@@ -69,10 +68,10 @@ pub extern fn kernel_main() -> !
         asm!("bx $0" :: "r"(0x2000) :: "volatile"); // Prefetch abort
     }*/
 
-    write!(Uart, "π = {}\n", core::f32::consts::PI).unwrap();
+    println!("π = {}", core::f32::consts::PI);
 
     random::init();
-    write!(Uart, "Random -> {:#08x}\n", random::generate()).unwrap();
+    println!("Random -> {:#08x}", random::generate());
 
     loop
     {

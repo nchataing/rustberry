@@ -1,6 +1,5 @@
 use core::ptr::read_volatile;
 use drivers;
-use drivers::uart::{Uart, Write};
 
 #[no_mangle]
 pub extern fn undefined_instruction_handler(instr_addr: usize) -> !
@@ -18,7 +17,7 @@ pub unsafe extern fn software_interrupt_handler(_a1: usize, _a2: usize,
     // argument as it was pushed on the stack by the assembly code.
 
     let syscall_id = read_volatile((call_addr-4) as *const u32) & 0x00ff_ffff;
-    write!(Uart, "Syscall {} at {:#x}\n", syscall_id, call_addr-4).unwrap();
+    print!("Syscall {} at {:#x}\n", syscall_id, call_addr-4);
 }
 
 fn fault_description(status: u32) -> &'static str
