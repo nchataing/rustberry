@@ -1,6 +1,10 @@
 #![no_std]
-#![feature(asm, lang_items, const_fn)]
+#![feature(asm, lang_items, const_fn, iterator_step_by)]
 #![allow(dead_code)]
+
+#![feature(alloc, allocator_api, global_allocator)]
+#[macro_use] extern crate alloc;
+extern crate rlibc;
 
 #[macro_use] extern crate bitflags;
 
@@ -11,9 +15,13 @@ pub mod exceptions;
 pub mod panic;
 mod system_control;
 mod atag;
-mod mem;
+pub mod mem;
 
 use drivers::*;
+
+use mem::kernel_alloc::GlobalKernelAllocator;
+#[global_allocator]
+static ALLOCATOR: GlobalKernelAllocator = GlobalKernelAllocator;
 
 fn timer_handler()
 {
@@ -34,17 +42,19 @@ pub extern fn kernel_main() -> !
 
     interrupts::init();
 
-    let sdcard = emmc::init().unwrap();
-    let mut first_sdblock = [0; emmc::BLOCK_SIZE];
-    sdcard.read(&mut first_sdblock, 0).unwrap();
-    println!("First SD card block:");
-    for chunk in first_sdblock.chunks(16)
+    if let Ok(sdcard) = emmc::init()
     {
-        for val in chunk
+        let mut first_sdblock = [0; emmc::BLOCK_SIZE];
+        sdcard.read(&mut first_sdblock, 0).unwrap();
+        println!("First SD card block:");
+        for chunk in first_sdblock.chunks(16)
         {
-            print!("{:02x}, ", val);
+            for val in chunk
+            {
+                print!("{:02x}, ", val);
+            }
+            print!("\n");
         }
-        print!("\n");
     }
 
     core_timer::init();
@@ -57,9 +67,7 @@ pub extern fn kernel_main() -> !
         asm!("svc 42" ::: "r0","r1","r2","r3","r12","lr","cc" : "volatile");
     }
 
-    mem::pages::init();
-    let test_page = mem::pages::allocate_page();
-    mem::pages::deallocate_page(test_page);
+    mem::physical_alloc::init();
 
     /*unsafe
     {
@@ -70,8 +78,26 @@ pub extern fn kernel_main() -> !
 
     println!("π = {}", core::f32::consts::PI);
 
-    random::init();
-    println!("Random -> {:#08x}", random::generate());
+    /*random::init();
+    println!("Random -> {:#08x}", random::generate());*/
+    unsafe
+    {
+        //use core::alloc::{Layout, GlobalAlloc};
+        //let addr = ALLOCATOR.alloc(Layout::from_size_align_unchecked(15,4)) as *mut u32;
+        /*for i in 0x00 .. 0x20
+        {
+            println!("{:#x}", *((0x6000_0000 + 4*i) as *mut u32));
+        }
+        println!("");*/
+
+        let v1 = vec![1337;0x1337];
+        for i in 0x00 .. 0x20
+        {
+            println!("{:#x}", *((0x6000_0000 + 4*i) as *mut u32));
+        }
+        println!("\n{}\n", v1[2]);
+        drop(v1);
+    }
 
     loop
     {

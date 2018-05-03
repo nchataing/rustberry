@@ -14,7 +14,7 @@ BOOTLOADER_OBJECTS = $(BUILD_DIR)/bootloader/boot.o \
 BOOTLOADER_LINKER_SCRIPT = bootloader/bootloader_link.ld
 
 QEMU_OPTIONS = -M raspi2 -m 256 -serial stdio -display none \
-			   -d "int,unimp,guest_errors,mmu"
+			   -d "unimp,guest_errors,mmu"
 
 ifeq ($(VERSION), release)
 	VERSION_FLAG = --release
@@ -62,7 +62,7 @@ $(BUILD_DIR)/%.o: %.s
 
 -include $(BUILD_DIR)/librustberry_*.d
 $(BUILD_DIR)/librustberry_%.a:
-	cd $* && RUST_TARGET_PATH=$(shell pwd) xargo build --target $(TARGET) \
-		$(XARGO_FLAGS)
+	cd $* && CC=arm-none-eabi-gcc RUST_TARGET_PATH=$(shell pwd) \
+		xargo build --target $(TARGET) $(XARGO_FLAGS)
 
 .PHONY: all kernel bootloader clean run gdb

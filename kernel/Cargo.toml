@@ -10,6 +10,7 @@ path = "kernel.rs"
 
 [dependencies]
 bitflags = "1"
+rlibc = "1.0"
 rustberry_drivers = { path = "../drivers" }
 
 [features]
