@@ -75,7 +75,7 @@ impl SectionTable
         SectionTable { ttbl: [0; 0x800] }
     }
 
-    pub fn unregister(&mut self, vaddr_base: SectionId)
+    pub fn unregister_section(&mut self, vaddr_base: SectionId)
     {
         self.ttbl[vaddr_base.0] = 0;
     }
@@ -105,6 +105,96 @@ impl SectionTable
         if !kernel_execute { entry |= 1 << 2; }
         self.ttbl[vaddr_base.0] = entry;
     }
+
+    fn divide_sections(&mut self, vaddr_base: SectionId) -> *mut PageTable
+    {
+        let fst_section_id = (vaddr_base.0 / 4) * 4;
+        for section in self.ttbl[fst_section_id .. fst_section_id + 4].iter()
+        {
+            assert!(section & 0b11 == 0)
+        }
+
+        let page_addr = physical_alloc::allocate_page().to_addr();
+        unsafe
+        {
+            for offset in 0 .. PAGE_SIZE as isize
+            {
+                *(page_addr.offset(offset)) = 0
+            }
+
+            for section in 0 .. 4
+            {
+                self.register_page_table(
+                    SectionId(vaddr_base.0 + section as usize),
+                    (page_addr as *const PageTable).offset(section),
+                    false);
+            }
+
+            (page_addr as *mut PageTable).offset(vaddr_base.0 as isize % 4)
+        }
+    }
+
+    pub fn get_page_table(&self, vaddr_base: SectionId) -> Option<*mut PageTable>
+    {
+        let entry = self.ttbl[vaddr_base.0];
+        if entry & 0b11 == 0b01
+        {
+            Some((entry & 0xffff_fc00) as *mut PageTable)
+        }
+        else { None }
+    }
+
+    pub fn unregister_page(&mut self, vaddr_base: PageId)
+    {
+        let section_id = SectionId(vaddr_base.0 / PAGE_BY_SECTION);
+        let page_table = self.get_page_table(section_id)
+            .expect("cannot deallocate inside not divided section");
+
+        unsafe
+        {
+            (*page_table).unregister_page(PageId(vaddr_base.0 % PAGE_BY_SECTION))
+        }
+    }
+
+    pub fn register_page(&mut self, vaddr_base: PageId, paddr_base: PageId,
+                         flags: &RegionFlags)
+    {
+        let section_id = SectionId(vaddr_base.0 / PAGE_BY_SECTION);
+        let page_table = match self.get_page_table(section_id)
+        {
+            None => self.divide_sections(section_id),
+            Some(ptbl) => ptbl,
+        };
+
+        unsafe
+        {
+            (*page_table).register_page(PageId(vaddr_base.0 % PAGE_BY_SECTION),
+                paddr_base, flags);
+        }
+    }
+
+    pub fn translate_addr(&self, vaddr: *mut u8) -> Option<*mut u8>
+    {
+        let vsection = vaddr as usize / SECTION_SIZE;
+        let vpage = (vaddr as usize / PAGE_SIZE) % PAGE_BY_SECTION;
+
+        let entry = self.ttbl[vsection];
+        let ppage = match entry & 0b11
+        {
+            0b00 => return None,
+            0b01 =>
+            {
+                let page_table = self.get_page_table(SectionId(vsection))
+                    .unwrap();
+                unsafe
+                {
+                    (*page_table).translate_page(PageId(vpage))?.0
+                }
+            }
+            _ => (entry >> 20) * PAGE_BY_SECTION + vpage
+        };
+        Some((ppage * PAGE_SIZE + (vaddr as usize % PAGE_SIZE)) as *mut u8)
+    }
 }
 
 #[repr(C, align(0x400))]
@@ -120,7 +210,7 @@ impl PageTable
         PageTable { ttbl: [0; 0x100] }
     }
 
-    pub fn unregister(&mut self, vaddr_offset: PageId)
+    pub fn unregister_page(&mut self, vaddr_offset: PageId)
     {
         self.ttbl[vaddr_offset.0] = 0;
     }
@@ -138,6 +228,13 @@ impl PageTable
         entry |= (flags.attributes as usize & 0b100) << (6-2);
 
         self.ttbl[vaddr_offset.0] = entry;
+    }
+
+    pub fn translate_page(&self, vaddr: PageId) -> Option<PageId>
+    {
+        let entry = self.ttbl[vaddr.0];
+        if entry & 1 << 1 == 0 { None }
+        else { Some(PageId(entry >> 12)) }
     }
 }
 

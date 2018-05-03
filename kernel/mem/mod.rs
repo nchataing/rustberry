@@ -50,6 +50,6 @@ impl fmt::Display for PageId
     }
 }
 
-pub mod pages;
+pub mod physical_alloc;
 pub mod mmu;
 pub mod map;

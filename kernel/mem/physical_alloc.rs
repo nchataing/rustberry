@@ -98,9 +98,7 @@ pub fn allocate_page() -> PageId
             SECTIONS[FST_DIVIDED_SECTION as usize].next = 0;
         }
 
-        let mut allocated_page : usize = 0;
-
-        'outer: for page_group in 0 .. 16
+        for page_group in 0 .. 16
         {
             let page_group_id = FST_DIVIDED_SECTION as usize * 16 + page_group;
             let page = &mut PAGES[page_group_id];
@@ -110,7 +108,7 @@ pub fn allocate_page() -> PageId
                 {
                     if *page & (1 << i) == 0
                     {
-                        allocated_page = i + 16 * page_group_id;
+                        let allocated_page = i + 16 * page_group_id;
                         *page |= 1 << i;
 
                         let section = &mut SECTIONS[FST_DIVIDED_SECTION as usize];
@@ -120,12 +118,13 @@ pub fn allocate_page() -> PageId
                             FST_DIVIDED_SECTION = section.next;
                         }
 
-                        break 'outer;
+                        return PageId(allocated_page);
                     }
                 }
             }
         }
-        PageId(allocated_page)
+
+        panic!("FST_DIVIDED_SECTION is already full");
     }
 }
 
@@ -168,4 +167,69 @@ pub fn deallocate_page(page_id: PageId)
             FST_FREE_SECTION = section_id as u16;
         }
     }
+}
+
+pub fn allocate_double_page() -> PageId
+{
+    unsafe
+    {
+        let mut cur_divided_section = FST_DIVIDED_SECTION;
+        while cur_divided_section != 0 || FST_FREE_SECTION != 0
+        {
+            if cur_divided_section == 0
+            {
+                FST_DIVIDED_SECTION = FST_FREE_SECTION;
+                cur_divided_section = FST_FREE_SECTION;
+                FST_FREE_SECTION = SECTIONS[FST_FREE_SECTION as usize].next;
+                SECTIONS[cur_divided_section as usize].next = 0;
+            }
+
+            let section = &mut SECTIONS[cur_divided_section as usize];
+            for page_group in 0 .. 16
+            {
+                let page_group_id = cur_divided_section as usize * 16 + page_group;
+                let page = &mut PAGES[page_group_id];
+                if *page != 0xFFFF
+                {
+                    for i in (0 .. 16).step_by(2)
+                    {
+                        if *page & (0b11 << i) == 0
+                        {
+                            let allocated_page = i + 16 * page_group_id;
+                            *page |= 0b11 << i;
+
+                            section.free_pages -= 2;
+                            if section.free_pages == 0
+                            {
+                                if cur_divided_section == FST_DIVIDED_SECTION
+                                {
+                                    FST_DIVIDED_SECTION = section.next;
+                                }
+                                else
+                                {
+                                    let prev = SECTIONS[cur_divided_section as usize].prev;
+                                    SECTIONS[prev as usize].next = section.next;
+
+                                    let next = SECTIONS[cur_divided_section as usize].next;
+                                    SECTIONS[next as usize].prev = section.prev;
+                                }
+                            }
+
+                            return PageId(allocated_page);
+                        }
+                    }
+                }
+            }
+
+            cur_divided_section = SECTIONS[cur_divided_section as usize].next;
+        }
+
+        panic!("No more memory available !");
+    }
+}
+
+pub fn deallocate_double_page(page_id: PageId)
+{
+    deallocate_page(page_id);
+    deallocate_page(PageId(page_id.0 + 1));
 }

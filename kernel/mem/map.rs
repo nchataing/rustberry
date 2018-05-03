@@ -102,38 +102,65 @@ pub fn init()
     }
 }
 
-const FIRST_HEAP_SECTION : SectionId = SectionId(0x600);
-static mut LAST_HEAP_SECTION : SectionId = FIRST_HEAP_SECTION;
+const FIRST_HEAP_PAGE : PageId = PageId(0x600_00);
+static mut LAST_HEAP_PAGE : PageId = FIRST_HEAP_PAGE;
 
 /**
  * Add heap memory for the kernel.
  * Kernel heap memory is mapped between 0x6000_0000 and 0x7FFF_FFFF.
- * It is composed by sections only (allocating page would require kernel heap).
- * This function returns the identifier of the first allocated section.
+ * This function returns the identifier of the first allocated page.
  * It panics if the requested memory goes above 0x7FFF_FFFF.
  */
-pub unsafe fn reserve_kernel_heap_sections(nb: usize) -> SectionId
+pub unsafe fn reserve_kernel_heap_pages(nb: usize) -> PageId
 {
-    let first_allocated_section = LAST_HEAP_SECTION;
+    let first_allocated_page = LAST_HEAP_PAGE;
     for _ in 0 .. nb
     {
-        if LAST_HEAP_SECTION.0 >= 0x1000
+        if LAST_HEAP_PAGE.0 >= 0x100000
         {
             panic!("Kernel heap exceeded its maximum size")
         }
 
-        let phys_section = pages::allocate_section();
+        let phys_page = physical_alloc::allocate_page();
 
         let flags = RegionFlags { execute: false, global: true,
             shareable: true, access: RegionAccess::KernelOnly,
             attributes: RegionAttribute::WriteAllocate };
 
-        KERNEL_SECTION_TABLE.register_section(LAST_HEAP_SECTION, phys_section,
-                                              &flags, false);
+        KERNEL_SECTION_TABLE.register_page(LAST_HEAP_PAGE, phys_page, &flags);
 
-        LAST_HEAP_SECTION.0 += 1;
+        LAST_HEAP_PAGE.0 += 1;
     }
 
     mmio::sync_barrier();
-    first_allocated_section
+    println!("Allocated {} pages at {}", nb, first_allocated_page);
+    first_allocated_page
 }
+
+pub unsafe fn free_kernel_heap_pages(nb: usize)
+{
+    for _ in 0 .. nb
+    {
+        if LAST_HEAP_PAGE.0 <= FIRST_HEAP_PAGE.0
+        {
+            panic!("Cannot free empty kernel heap")
+        }
+        LAST_HEAP_PAGE.0 -= 1;
+
+        let paddr = translate_kernel_addr(LAST_HEAP_PAGE.to_addr())
+            .expect("Kernel heap page already deallocated");
+        KERNEL_SECTION_TABLE.unregister_page(LAST_HEAP_PAGE);
+        physical_alloc::deallocate_page(PageId(paddr as usize / PAGE_SIZE));
+    }
+
+    // TODO: Invalidate TLB cache after deallocation !
+}
+
+pub fn translate_kernel_addr(vaddr: *mut u8) -> Option<*mut u8>
+{
+    unsafe
+    {
+        KERNEL_SECTION_TABLE.translate_addr(vaddr)
+    }
+}
+
