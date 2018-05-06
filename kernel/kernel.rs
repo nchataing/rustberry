@@ -42,6 +42,12 @@ pub extern fn kernel_main() -> !
     let size = atag::get_mem_size();
     info!("Memory size: {:#x}", size);
 
+    mem::physical_alloc::init();
+
+    let v1 = vec![1337;42];
+    println!("Dynamic allocation: 1337 = {}", v1[2]);
+    drop(v1);
+
     interrupts::init();
 
     match emmc::init()
@@ -59,6 +65,18 @@ pub extern fn kernel_main() -> !
                 }
                 print!("\n");
             }
+
+            match mbr_reader::read_partition_table(sdcard)
+            {
+                Ok(partition_table) =>
+                {
+                    for partition in partition_table.iter()
+                    {
+                        println!("{:?}", partition);
+                    }
+                },
+                Err(err) => warn!("MBR read failure: {:?}", err)
+            }
         },
         Err(err) => warn!("SD card failure: {:?}", err)
     }
@@ -72,8 +90,6 @@ pub extern fn kernel_main() -> !
     {
         asm!("svc 42" ::: "r0","r1","r2","r3","r12","lr","cc" : "volatile");
     }
-
-    mem::physical_alloc::init();
 
     /*unsafe
     {
@@ -90,10 +106,6 @@ pub extern fn kernel_main() -> !
         Some(rand) => println!("Random -> {:#08x}", rand),
         None => warn!("Random engine timeout")
     }
-
-    let v1 = vec![1337;42];
-    println!("Dynamic allocation: 1337 = {}", v1[2]);
-    drop(v1);
 
     loop
     {
