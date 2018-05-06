@@ -34,10 +34,6 @@ coproc_reg!
 {
     SCTLR : p15, c1, 0, c0, 0;
     CPACR : p15, c1, 0, c0, 2;
-
-    ICIALLUIS : p15, c7, 0, c1, 0;
-    BPIALLIS  : p15, c7, 0, c1, 6;
-    TLBIALLIS : p15, c8, 0, c3, 0;
 }
 
 bitflags!
@@ -83,26 +79,3 @@ pub fn disable_fpu()
     }
 }
 
-pub fn wipe_instr_cache()
-{
-    unsafe
-    {
-        ICIALLUIS::write(0);
-    }
-}
-
-pub fn wipe_branch_predictor()
-{
-    unsafe
-    {
-        BPIALLIS::write(0);
-    }
-}
-
-pub fn wipe_tlb()
-{
-    unsafe
-    {
-        TLBIALLIS::write(0);
-    }
-}
