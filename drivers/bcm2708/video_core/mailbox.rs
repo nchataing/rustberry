@@ -42,7 +42,7 @@ pub fn receive(channel: u8) -> Option<u32>
             {
                 // The program won't wait forever.
                 count += 1;
-                if count > 0x00100000 { return None; }
+                if count > 0x10_0000 { return None; }
             }
 
             mmio::mem_barrier();

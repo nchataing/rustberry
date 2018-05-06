@@ -2,7 +2,7 @@ use mmio;
 use bcm2708;
 
 /// The GPIO registers base address.
-pub const GPIO_BASE : usize = (bcm2708::PERIPHERAL_BASE + 0x00200000);
+pub const GPIO_BASE : usize = (bcm2708::PERIPHERAL_BASE + 0x200000);
 
 pub enum PinFunction
 {

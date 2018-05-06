@@ -29,12 +29,18 @@ pub fn init()
 }
 
 /// Generate a random word
-pub fn generate() -> u32
+pub fn generate() -> Option<u32>
 {
     unsafe
     {
         // mmio::read(RNG_STATUS) >> 24 = nb_available_words
-        while (mmio::read(RNG_STATUS) >> 24) == 0 {}
-        mmio::read(RNG_DATA)
+        if timeout_wait_while!((mmio::read(RNG_STATUS) >> 24) == 0, 0x1000)
+        {
+            None
+        }
+        else
+        {
+            Some(mmio::read(RNG_DATA))
+        }
     }
 }

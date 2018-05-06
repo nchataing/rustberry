@@ -10,6 +10,7 @@ extern crate rlibc;
 
 #[macro_use] extern crate rustberry_drivers as drivers;
 
+#[macro_use] mod log;
 #[macro_use] mod linker_symbol;
 pub mod exceptions;
 pub mod panic;
@@ -38,23 +39,27 @@ pub extern fn kernel_main() -> !
     println!("\x1b[32;1mHello world !\x1b[0m");
 
     let size = atag::get_mem_size();
-    println!("Memory size: {:#x}", size);
+    info!("Memory size: {:#x}", size);
 
     interrupts::init();
 
-    if let Ok(sdcard) = emmc::init()
+    match emmc::init()
     {
-        let mut first_sdblock = [0; emmc::BLOCK_SIZE];
-        sdcard.read(&mut first_sdblock, 0).unwrap();
-        println!("First SD card block:");
-        for chunk in first_sdblock.chunks(16)
+        Ok(sdcard) =>
         {
-            for val in chunk
+            let mut first_sdblock = [0; emmc::BLOCK_SIZE];
+            sdcard.read(&mut first_sdblock, 0).unwrap();
+            println!("First SD card block:");
+            for chunk in first_sdblock.chunks(16)
             {
-                print!("{:02x}, ", val);
+                for val in chunk
+                {
+                    print!("{:02x}, ", val);
+                }
+                print!("\n");
             }
-            print!("\n");
-        }
+        },
+        Err(err) => warn!("SD card failure: {:?}", err)
     }
 
     core_timer::init();
@@ -78,26 +83,16 @@ pub extern fn kernel_main() -> !
 
     println!("π = {}", core::f32::consts::PI);
 
-    /*random::init();
-    println!("Random -> {:#08x}", random::generate());*/
-    unsafe
+    random::init();
+    match random::generate()
     {
-        //use core::alloc::{Layout, GlobalAlloc};
-        //let addr = ALLOCATOR.alloc(Layout::from_size_align_unchecked(15,4)) as *mut u32;
-        /*for i in 0x00 .. 0x20
-        {
-            println!("{:#x}", *((0x6000_0000 + 4*i) as *mut u32));
-        }
-        println!("");*/
-
-        let v1 = vec![1337;0x1337];
-        for i in 0x00 .. 0x20
-        {
-            println!("{:#x}", *((0x6000_0000 + 4*i) as *mut u32));
-        }
-        println!("\n{}\n", v1[2]);
-        drop(v1);
+        Some(rand) => println!("Random -> {:#08x}", rand),
+        None => warn!("Random engine timeout")
     }
+
+    let v1 = vec![1337;42];
+    println!("Dynamic allocation: 1337 = {}", v1[2]);
+    drop(v1);
 
     loop
     {

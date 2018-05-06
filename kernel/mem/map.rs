@@ -133,7 +133,10 @@ pub unsafe fn reserve_kernel_heap_pages(nb: usize) -> PageId
     }
 
     mmio::sync_barrier();
-    println!("Allocated {} pages at {}", nb, first_allocated_page);
+
+    #[cfg(feature = "trace_kernel_heap_pages")]
+    info!("Allocated {} pages at {}", nb, first_allocated_page);
+
     first_allocated_page
 }
 
