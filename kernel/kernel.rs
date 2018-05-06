@@ -17,7 +17,6 @@ use drivers::*;
 
 fn timer_handler()
 {
-    print!(".");
     core_timer::set_remaining_time(core_timer::Physical, 10_000_000);
 }
 
@@ -47,11 +46,17 @@ pub extern fn kernel_main() -> !
         print!("\n");
     }
 
+    let partition_table = mbr_reader::read_partition_table(sdcard).unwrap();
+    for i in 0 .. 4
+    {
+        println!("{:?}", partition_table[i]);
+    }
+
     core_timer::init();
     core_timer::register_callback(core_timer::Physical, timer_handler, false);
     core_timer::set_enabled(core_timer::Physical, true);
     core_timer::set_remaining_time(core_timer::Physical, 10_000_000);
-
+    
     unsafe
     {
         asm!("svc 42" ::: "r0","r1","r2","r3","r12","lr","cc" : "volatile");
