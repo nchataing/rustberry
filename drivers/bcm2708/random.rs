@@ -34,7 +34,7 @@ pub fn generate() -> Option<u32>
     unsafe
     {
         // mmio::read(RNG_STATUS) >> 24 = nb_available_words
-        if timeout_wait_while!((mmio::read(RNG_STATUS) >> 24) == 0, 0x1000)
+        if timeout_wait_while!((mmio::read(RNG_STATUS) >> 24) == 0, 0x1000000)
         {
             None
         }
