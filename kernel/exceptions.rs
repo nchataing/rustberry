@@ -1,5 +1,6 @@
 use core::ptr::read_volatile;
 use drivers;
+use process::RegisterContext;
 
 #[no_mangle]
 pub extern fn undefined_instruction_handler(instr_addr: usize) -> !
@@ -78,8 +79,9 @@ pub extern fn data_abort_handler(instr_addr: usize, data_addr: usize,
            if cache { " (cache maintenance)" } else { "" }, fault_desc)
 }
 
+
 #[no_mangle]
-pub extern fn irq_handler()
+pub extern fn irq_handler(_reg_ctx: &mut RegisterContext)
 {
     drivers::interrupts::handle_irq();
 }

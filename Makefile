@@ -13,8 +13,9 @@ BOOTLOADER_OBJECTS = $(BUILD_DIR)/bootloader/boot.o \
 					 $(BUILD_DIR)/librustberry_bootloader.a
 BOOTLOADER_LINKER_SCRIPT = bootloader/bootloader_link.ld
 
-QEMU_OPTIONS = -M raspi2 -m 256 -serial stdio -display none \
-			   -d "unimp,guest_errors,mmu"
+# Comma-separated list, use help to show the list of available options
+QEMU_DEBUG = "unimp"
+QEMU_OPTIONS = -M raspi2 -m 256 -serial stdio -display none -d $(QEMU_DEBUG)
 
 ifeq ($(VERSION), release)
 	VERSION_FLAG = --release

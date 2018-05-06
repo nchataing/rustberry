@@ -48,14 +48,21 @@ irq:
     sub     lr, lr, #4
     srsdb   sp!, #0x13
     cpsid   i, #0x13
-    push    {r0-r3, r12, lr}
-    and     r1, sp, #4
-    sub     sp, sp, r1
-    push    {r1}
+    stmdb   sp, {r0-r12, sp, lr}^   // Push all the usr registers
+    sub     sp, sp, #60
+    mov     r0, sp
+    push    {lr}                    // Also push lr_svc
+
+    // Realign stack on 8 byte boundary
+    and     r4, sp, #7
+    sub     sp, sp, r4
+
     bl      irq_handler
-    pop     {r1}
-    add     sp, sp, r1
-    pop     {r0-r3, r12, lr}
+
+    add     sp, sp, r4
+    pop     {lr}
+    ldmia   sp, {r0-r12, sp, lr}^
+    add     sp, sp, #60
     rfeia   sp!
 
 // FIQ
@@ -64,7 +71,7 @@ fiq:
     srsdb   sp!, #0x13
     cpsid   if, #0x13
     push    {r0-r3, r12, lr}
-    and     r1, sp, #4
+    and     r1, sp, #7
     sub     sp, sp, r1
     push    {r1}
     bl      fiq_handler

@@ -251,10 +251,11 @@ pub unsafe fn setup_kernel_table(translation_table: *const SectionTable)
     use system_control;
     use system_control::Features;
 
-    system_control::disable(Features::MMU | Features::CACHE |
-                            Features::BRANCH_PREDICTION |
-                            Features::INSTRUCTION_CACHE | Features::TEX_REMAP |
-                            Features::ACCESS_FLAG);
+    system_control::disable_features(Features::MMU | Features::CACHE |
+                                     Features::BRANCH_PREDICTION |
+                                     Features::INSTRUCTION_CACHE |
+                                     Features::TEX_REMAP |
+                                     Features::ACCESS_FLAG);
 
     system_control::wipe_instr_cache();
     system_control::wipe_branch_predictor();
@@ -265,11 +266,11 @@ pub unsafe fn setup_kernel_table(translation_table: *const SectionTable)
     TTBR0::write(translation_table as u32 | 0b1001010);
     DACR::write(1); // Use domain 0 only with access check
 
-    system_control::enable(Features::MMU | Features::CACHE |
-                           Features::BRANCH_PREDICTION |
-                           Features::INSTRUCTION_CACHE |
-                           Features::SWP_INSTRUCTION |
-                           Features::ALIGNMENT_CHECK);
+    system_control::enable_features(Features::MMU | Features::CACHE |
+                                    Features::BRANCH_PREDICTION |
+                                    Features::INSTRUCTION_CACHE |
+                                    Features::SWP_INSTRUCTION |
+                                    Features::ALIGNMENT_CHECK);
     mmio::sync_barrier();
 }
 

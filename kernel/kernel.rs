@@ -17,6 +17,7 @@ pub mod panic;
 mod system_control;
 mod atag;
 pub mod mem;
+mod process;
 
 use drivers::*;
 
