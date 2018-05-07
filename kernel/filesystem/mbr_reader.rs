@@ -11,7 +11,7 @@ pub struct Partition
     pub fst_sector: u32,
     pub size: u32,
     pub bootable: bool,
-    pub part_type: u8,
+    // pub part_type: u8,
 }
 
 impl Partition
@@ -23,8 +23,7 @@ impl Partition
             id: 0,
             fst_sector: 0,
             size: 0,
-            bootable: false,
-            part_type: 0
+            bootable: false
         }
     }
 }
@@ -32,8 +31,8 @@ impl Partition
 #[derive(Debug)]
 pub enum MbrError
 {
-    UnvalidMbr(usize),
-    UnvalidPartitionStatus(usize),
+    InvalidMbr(usize),
+    InvalidPartitionStatus(usize),
 }
 
 pub fn read_partition_table(card: SdCard) -> Result<[Partition; 4], MbrError>
@@ -47,7 +46,7 @@ pub fn read_partition_table(card: SdCard) -> Result<[Partition; 4], MbrError>
     {
         return Err(MbrError::UnvalidMbr(magic_val as usize))
     }
-
+    
     let mut parts = [Partition::new_empty(); 4];
 
     for part_nb in 0 .. 4
@@ -60,7 +59,7 @@ pub fn read_partition_table(card: SdCard) -> Result<[Partition; 4], MbrError>
             0x00 => false,
             _ => return Err(MbrError::UnvalidPartitionStatus(part_nb))
         };
-        parts[part_nb].part_type = mbr_block[entry_addr + 0x4];
+        // parts[part_nb].part_type = mbr_block[entry_addr + 0x4];
         parts[part_nb].fst_sector =
             (mbr_block[entry_addr + 0x8] as u32)+
             (mbr_block[entry_addr + 0x9] as u32) * 0x100 +
@@ -69,7 +68,7 @@ pub fn read_partition_table(card: SdCard) -> Result<[Partition; 4], MbrError>
 
         parts[part_nb].size =
             (mbr_block[entry_addr + 0xc] as u32) +
-            (mbr_block[entry_addr + 0xd] as u32) * 0x100 +
+            (mbr_block[entry_addr + 0xd] as u32) * 0x100 + 
             (mbr_block[entry_addr + 0xe] as u32) * 0x10000 +
             (mbr_block[entry_addr + 0xf] as u32) * 0x1000000;
     }

@@ -15,4 +15,3 @@ pub mod interrupts;
 pub mod system_timer;
 pub mod random;
 pub mod emmc;
-pub mod mbr_reader;

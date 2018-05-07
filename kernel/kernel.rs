@@ -18,6 +18,7 @@ mod system_control;
 mod atag;
 pub mod mem;
 mod process;
+mod filesystem;
 
 use drivers::*;
 
@@ -66,7 +67,7 @@ pub extern fn kernel_main() -> !
                 print!("\n");
             }
 
-            match mbr_reader::read_partition_table(sdcard)
+            match filesystem::mbr_reader::read_partition_table(sdcard)
             {
                 Ok(partition_table) =>
                 {
