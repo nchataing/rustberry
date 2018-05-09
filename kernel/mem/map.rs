@@ -135,7 +135,7 @@ pub unsafe fn reserve_kernel_heap_pages(nb: usize) -> PageId
     mmio::sync_barrier();
 
     #[cfg(feature = "trace_kernel_heap_pages")]
-    info!("Allocated {} pages at {}", nb, first_allocated_page);
+    info!("Allocated {} kernel heap pages at {}", nb, first_allocated_page);
 
     first_allocated_page
 }
@@ -153,10 +153,12 @@ pub unsafe fn free_kernel_heap_pages(nb: usize)
         let paddr = translate_kernel_addr(LAST_HEAP_PAGE.to_addr())
             .expect("Kernel heap page already deallocated");
         KERNEL_SECTION_TABLE.unregister_page(LAST_HEAP_PAGE);
+        cache::tlb::invalidate_page(LAST_HEAP_PAGE);
         physical_alloc::deallocate_page(PageId(paddr as usize / PAGE_SIZE));
     }
 
-    // TODO: Invalidate TLB cache after deallocation !
+    #[cfg(feature = "trace_kernel_heap_pages")]
+    info!("Deallocated {} kernel heap pages", nb);
 }
 
 pub fn translate_kernel_addr(vaddr: *mut u8) -> Option<*mut u8>

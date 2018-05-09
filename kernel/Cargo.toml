@@ -9,8 +9,8 @@ crate-type = ["staticlib"]
 path = "kernel.rs"
 
 [dependencies]
-bitflags = "1"
 rlibc = "1.0"
+bitflags = "1"
 rustberry_drivers = { path = "../drivers" }
 
 [features]

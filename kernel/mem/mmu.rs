@@ -259,7 +259,7 @@ pub unsafe fn setup_kernel_table(translation_table: *const SectionTable)
 
     cache::invalidate_instr_cache();
     cache::invalidate_branch_predictor();
-    cache::invalidate_tlb();
+    cache::tlb::invalidate_all();
     mmio::sync_barrier();
 
     TTBCR::write(1); // Cut between TTBR0 and TTBR1 at 0x8000_0000

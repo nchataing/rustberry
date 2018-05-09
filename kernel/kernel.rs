@@ -55,7 +55,7 @@ pub extern fn kernel_main() -> !
     {
         Ok(sdcard) =>
         {
-            let mut first_sdblock = [0; emmc::BLOCK_SIZE];
+            /*let mut first_sdblock = [0; emmc::BLOCK_SIZE];
             sdcard.read(&mut first_sdblock, 0).unwrap();
             println!("First SD card block:");
             for chunk in first_sdblock.chunks(16)
@@ -65,7 +65,7 @@ pub extern fn kernel_main() -> !
                     print!("{:02x}, ", val);
                 }
                 print!("\n");
-            }
+            }*/
 
             match filesystem::mbr_reader::read_partition_table(sdcard)
             {
@@ -97,6 +97,11 @@ pub extern fn kernel_main() -> !
         // Each of the following operations must fail !
         mmio::write(0 as *mut u32, 0); // Data abort
         asm!("bx $0" :: "r"(0x2000) :: "volatile"); // Prefetch abort
+
+        let page = mem::map::reserve_kernel_heap_pages(1);
+        mmio::write(page.to_addr() as *mut u32, 42);
+        mem::map::free_kernel_heap_pages(1);
+        println!("{}", mmio::read(page.to_addr() as *mut u32));
     }*/
 
     println!("π = {}", core::f32::consts::PI);
