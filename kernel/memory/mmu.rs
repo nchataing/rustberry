@@ -1,5 +1,5 @@
 use drivers::mmio;
-use mem::*;
+use memory::*;
 
 #[derive(Clone, Copy)]
 pub enum RegionAttribute

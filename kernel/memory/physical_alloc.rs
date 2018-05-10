@@ -1,5 +1,5 @@
 use atag;
-use mem::*;
+use memory::*;
 
 linker_symbol!
 {

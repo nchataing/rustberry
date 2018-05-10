@@ -27,7 +27,7 @@ pub fn invalidate_branch_predictor()
  */
 pub mod tlb
 {
-    use mem::PageId;
+    use memory::PageId;
 
     coproc_reg!
     {

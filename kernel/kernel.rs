@@ -16,13 +16,13 @@ pub mod exceptions;
 pub mod panic;
 mod system_control;
 mod atag;
-pub mod mem;
+pub mod memory;
 mod process;
 mod filesystem;
 
 use drivers::*;
 
-use mem::kernel_alloc::GlobalKernelAllocator;
+use memory::kernel_alloc::GlobalKernelAllocator;
 #[global_allocator]
 static ALLOCATOR: GlobalKernelAllocator = GlobalKernelAllocator;
 
@@ -35,7 +35,7 @@ fn timer_handler()
 #[no_mangle]
 pub extern fn kernel_main() -> !
 {
-    mem::map::init();
+    memory::kernel_map::init();
 
     uart::init();
     println!("\x1b[32;1mHello world !\x1b[0m");
@@ -43,7 +43,7 @@ pub extern fn kernel_main() -> !
     let size = atag::get_mem_size();
     info!("Memory size: {:#x}", size);
 
-    mem::physical_alloc::init();
+    memory::physical_alloc::init();
 
     let v1 = vec![1337;42];
     println!("Dynamic allocation: 1337 = {}", v1[2]);
@@ -98,9 +98,9 @@ pub extern fn kernel_main() -> !
         mmio::write(0 as *mut u32, 0); // Data abort
         asm!("bx $0" :: "r"(0x2000) :: "volatile"); // Prefetch abort
 
-        let page = mem::map::reserve_kernel_heap_pages(1);
+        let page = memory::kernel_map::reserve_heap_pages(1);
         mmio::write(page.to_addr() as *mut u32, 42);
-        mem::map::free_kernel_heap_pages(1);
+        memory::kernel_map::free_heap_pages(1);
         println!("{}", mmio::read(page.to_addr() as *mut u32));
     }*/
 

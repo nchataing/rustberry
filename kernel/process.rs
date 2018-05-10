@@ -1,5 +1,5 @@
 use alloc::{boxed::Box, String};
-use mem;
+use memory;
 
 #[derive(Debug)]
 #[repr(C)]
@@ -28,7 +28,8 @@ pub struct Process
 {
     regs: RegisterContext,
     pid: u32,
+    asid: Option<u8>,
     name: String,
-    mmu_tbl: Box<mem::mmu::SectionTable>,
+    mmu_tbl: Box<memory::mmu::SectionTable>,
 }
 

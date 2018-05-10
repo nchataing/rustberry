@@ -1,7 +1,7 @@
 use drivers::mmio;
 use atag;
-use mem::*;
-use mem::mmu::*;
+use memory::*;
+use memory::mmu::*;
 
 static mut KERNEL_SECTION_TABLE: SectionTable = SectionTable::new();
 static mut KERNEL_PAGE_TABLE: PageTable = PageTable::new();
@@ -111,7 +111,7 @@ static mut LAST_HEAP_PAGE : PageId = FIRST_HEAP_PAGE;
  * This function returns the identifier of the first allocated page.
  * It panics if the requested memory goes above 0x7FFF_FFFF.
  */
-pub unsafe fn reserve_kernel_heap_pages(nb: usize) -> PageId
+pub unsafe fn reserve_heap_pages(nb: usize) -> PageId
 {
     let first_allocated_page = LAST_HEAP_PAGE;
     for _ in 0 .. nb
@@ -140,7 +140,7 @@ pub unsafe fn reserve_kernel_heap_pages(nb: usize) -> PageId
     first_allocated_page
 }
 
-pub unsafe fn free_kernel_heap_pages(nb: usize)
+pub unsafe fn free_heap_pages(nb: usize)
 {
     for _ in 0 .. nb
     {
@@ -150,7 +150,7 @@ pub unsafe fn free_kernel_heap_pages(nb: usize)
         }
         LAST_HEAP_PAGE.0 -= 1;
 
-        let paddr = translate_kernel_addr(LAST_HEAP_PAGE.to_addr())
+        let paddr = translate_addr(LAST_HEAP_PAGE.to_addr())
             .expect("Kernel heap page already deallocated");
         KERNEL_SECTION_TABLE.unregister_page(LAST_HEAP_PAGE);
         cache::tlb::invalidate_page(LAST_HEAP_PAGE);
@@ -161,7 +161,7 @@ pub unsafe fn free_kernel_heap_pages(nb: usize)
     info!("Deallocated {} kernel heap pages", nb);
 }
 
-pub fn translate_kernel_addr(vaddr: *mut u8) -> Option<*mut u8>
+pub fn translate_addr(vaddr: *mut u8) -> Option<*mut u8>
 {
     unsafe
     {

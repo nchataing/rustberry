@@ -1,5 +1,5 @@
 use core::ptr::NonNull;
-use mem::*;
+use memory::*;
 use core::alloc::{Alloc, Layout, Opaque, AllocErr, GlobalAlloc};
 
 #[repr(C)]
@@ -64,7 +64,7 @@ impl KernelAllocator
      */
     unsafe fn add_pages(&mut self, nb: usize)
     {
-        let fst_new_page = map::reserve_kernel_heap_pages(nb);
+        let fst_new_page = kernel_map::reserve_heap_pages(nb);
         let header;
         if fst_new_page.to_addr() as usize == FIRST_HEAP_ADDR
         {
@@ -339,5 +339,5 @@ pub extern fn rust_oom() -> !
 #[no_mangle]
 pub unsafe fn __aeabi_unwind_cpp_pr0() -> !
 {
-    loop {}
+    panic!("unimplemented __aeabi_unwind_cpp_pr0");
 }

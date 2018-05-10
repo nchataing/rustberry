@@ -53,5 +53,5 @@ impl fmt::Display for PageId
 pub mod physical_alloc;
 pub mod cache;
 pub mod mmu;
-pub mod map;
+pub mod kernel_map;
 pub mod kernel_alloc;
