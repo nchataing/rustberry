@@ -9,6 +9,7 @@ extern crate rlibc;
 #[macro_use] extern crate bitflags;
 
 #[macro_use] extern crate rustberry_drivers as drivers;
+extern crate rustberry_allocator as allocator;
 
 #[macro_use] mod log;
 #[macro_use] mod linker_symbol;

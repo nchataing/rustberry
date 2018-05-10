@@ -12,6 +12,7 @@ path = "kernel.rs"
 rlibc = "1.0"
 bitflags = "1"
 rustberry_drivers = { path = "../drivers" }
+rustberry_allocator = { path = "../allocator" }
 
 [features]
 pi2 = ["rustberry_drivers/pi2"]

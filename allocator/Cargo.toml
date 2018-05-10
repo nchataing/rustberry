@@ -1,0 +1,9 @@
+[package]
+name = "rustberry_allocator"
+version = "0.0.0"
+authors = ["Guillaume Bertholon <guillaume.bertholon@ens.fr>",
+           "Nicolas Chataing <nicolas.chataing@ens.fr>"]
+
+[lib]
+crate-type = ["rlib"]
+path = "lib.rs"
