@@ -1,0 +1,13 @@
+[package]
+name = "rustberry_std"
+version = "0.0.0"
+authors = ["Guillaume Bertholon <guillaume.bertholon@ens.fr>",
+           "Nicolas Chataing <nicolas.chataing@ens.fr>"]
+
+[lib]
+crate-type = ["rlib"]
+path = "lib.rs"
+
+[dependencies]
+rlibc = "1.0"
+#rustberry_allocator = { path = "../allocator" }

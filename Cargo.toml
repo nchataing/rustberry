@@ -1,5 +1,5 @@
 [workspace]
-members = ["kernel", "bootloader"]
+members = ["kernel", "bootloader", "programs/*/"]
 
 [profile.dev]
 panic = "abort"
