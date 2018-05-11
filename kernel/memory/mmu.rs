@@ -97,9 +97,14 @@ impl SectionTable
         self.ttbl[vaddr_base.0] = entry;
     }
 
-    pub fn register_page_table(&mut self, vaddr_base: SectionId,
-                               page_table: *const PageTable,
-                               kernel_execute: bool)
+    /**
+     * Register a page table in the section table.
+     * It can only be safely called from outside this module
+     * if the section table is never destroyed.
+     */
+    pub unsafe fn register_page_table(&mut self, vaddr_base: SectionId,
+                                      page_table: *const PageTable,
+                                      kernel_execute: bool)
     {
         let mut entry = page_table as usize | (1 << 0);
         if !kernel_execute { entry |= 1 << 2; }
@@ -197,6 +202,21 @@ impl SectionTable
     }
 }
 
+// Section table should destroy the created page tables when deleted
+impl Drop for SectionTable
+{
+    fn drop(&mut self)
+    {
+        for entry in self.ttbl.iter().step_by(4)
+        {
+            if entry & 0b11 == 0b01 && entry & 0xC00 == 0
+            {
+                physical_alloc::deallocate_page(PageId(entry / PAGE_SIZE));
+            }
+        }
+    }
+}
+
 #[repr(C, align(0x400))]
 pub struct PageTable
 {
@@ -244,6 +264,8 @@ coproc_reg!
     TTBR1 : p15, c2, 0, c0, 1;
     TTBCR : p15, c2, 0, c0, 2;
     DACR  : p15, c3, 0, c0, 0;
+
+    CONTEXTIDR: p15, c13, 0, c0, 1;
 }
 
 pub unsafe fn setup_kernel_table(translation_table: *const SectionTable)
@@ -262,7 +284,7 @@ pub unsafe fn setup_kernel_table(translation_table: *const SectionTable)
     cache::tlb::invalidate_all();
     mmio::sync_barrier();
 
-    TTBCR::write(1); // Cut between TTBR0 and TTBR1 at 0x8000_0000
+    TTBCR::write(1 | 1 << 5); // Cut between TTBR0 and TTBR1 at 0x8000_0000
     TTBR0::write(translation_table as u32 | 0b1001010);
     DACR::write(1); // Use domain 0 only with access check
 
@@ -274,3 +296,24 @@ pub unsafe fn setup_kernel_table(translation_table: *const SectionTable)
     mmio::sync_barrier();
 }
 
+pub unsafe fn set_application_table(translation_table: *const SectionTable, cxid: u32)
+{
+    // Disable higher half translation table
+    disable_application_table();
+
+    // Set the context id, note that lower 8 bits are used as application space id
+    CONTEXTIDR::write(cxid);
+
+    // Set the translation table
+    TTBR1::write(translation_table.offset(-1) as u32 | 0b1001010);
+
+    // Reenable higher half translation table
+    mmio::instr_barrier();
+    TTBCR::reset_bits(1 << 5);
+}
+
+pub unsafe fn disable_application_table()
+{
+    TTBCR::set_bits(1 << 5);
+    mmio::instr_barrier();
+}

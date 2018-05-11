@@ -1,3 +1,15 @@
+/*!
+ * The kernel memory map is organized as follows:
+ * 0x0000_0000 - 0x400F_FFFF: Identity mapping, access to the corresponding physical addresses.
+ *   0x00000 - 0x00FFF: First page, interrupt vectors and ATAGS
+ *   0x01000 - 0x07FFF: Supervisor heap, this is the only kernel heap
+ *   0x08000 - 0xFFFFF: Kernel code and static variables
+ *   ...: available space
+ *   0x3F00_0000 - 0x3FFF_FFFF: BCM 2708 peripheral MMIO
+ *   0x4000_0000 - 0x400F_FFFF: Quad-A7 peripheral MMIO
+ * 0x6000_0000 - 0x7FFF_FFFF: Kernel heap, growing up
+ */
+
 use drivers::mmio;
 use atag;
 use memory::*;
@@ -74,8 +86,11 @@ pub fn init()
         pages.register_page(PageId(i), PageId(i), &kernel_data_flags);
     }
 
-    // Use pages above
-    sections.register_page_table(SectionId(0), pages, true);
+    unsafe
+    {
+        // Use pages above / safe as KERNEL_SECTION_TABLE is never destroyed
+        sections.register_page_table(SectionId(0), pages, true);
+    }
 
     // Standard data sections
     let memory_size = atag::get_mem_size();
@@ -116,7 +131,7 @@ pub unsafe fn reserve_heap_pages(nb: usize) -> PageId
     let first_allocated_page = LAST_HEAP_PAGE;
     for _ in 0 .. nb
     {
-        if LAST_HEAP_PAGE.0 >= 0x100000
+        if LAST_HEAP_PAGE.0 >= 0x800_00
         {
             panic!("Kernel heap exceeded its maximum size")
         }
@@ -168,4 +183,3 @@ pub fn translate_addr(vaddr: *mut u8) -> Option<*mut u8>
         KERNEL_SECTION_TABLE.translate_addr(vaddr)
     }
 }
-

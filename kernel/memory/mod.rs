@@ -40,6 +40,18 @@ impl PageId
     {
         (self.0 * PAGE_SIZE) as *mut u8
     }
+
+    pub fn to_lower(self) -> PageId
+    {
+        assert!(self.0 >= 0x800_00);
+        PageId(self.0 - 0x800_00)
+    }
+
+    pub fn to_upper(self) -> PageId
+    {
+        assert!(self.0 < 0x800_00);
+        PageId(self.0 + 0x800_00)
+    }
 }
 
 impl fmt::Display for PageId
@@ -55,3 +67,4 @@ pub mod cache;
 pub mod mmu;
 pub mod kernel_map;
 pub mod kernel_alloc;
+pub mod application_map;

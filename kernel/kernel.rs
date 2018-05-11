@@ -105,6 +105,26 @@ pub extern fn kernel_main() -> !
         println!("{}", mmio::read(page.to_addr() as *mut u32));
     }*/
 
+    unsafe
+    {
+        use alloc::boxed::Box;
+
+        let mut appmap1 = Box::new(memory::application_map::ApplicationMap::new());
+        appmap1.activate();
+        let page1 = appmap1.reserve_heap_pages(1).unwrap();
+        mmio::write(page1.to_addr() as *mut u32, 42);
+        println!("{} @ {:p}", mmio::read(page1.to_addr() as *mut u32), page1.to_addr());
+
+        mmio::instr_barrier();
+
+        let mut appmap2 = Box::new(memory::application_map::ApplicationMap::new());
+        let page2 = appmap2.reserve_heap_pages(1).unwrap();
+        appmap2.activate();
+        println!("{} @ {:p}", mmio::read(page2.to_addr() as *mut u32), page2.to_addr());
+        mmio::write(page2.to_addr() as *mut u32, 54);
+        println!("{} @ {:p}", mmio::read(page2.to_addr() as *mut u32), page2.to_addr());
+    }
+
     println!("π = {}", core::f32::consts::PI);
 
     random::init();

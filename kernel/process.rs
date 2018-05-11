@@ -1,4 +1,4 @@
-use alloc::{boxed::Box, String};
+use alloc::String;
 use memory;
 
 #[derive(Debug)]
@@ -18,18 +18,26 @@ pub struct RegisterContext
     r10: u32,
     r11: u32,
     r12: u32,
-    sp: *mut u32,
-    lr: *mut u32,
-    pc: *mut u32,
+    sp: *const u32,
+    lr: *const u32,
+    pc: *const u32,
     psr: u32,
+}
+
+enum ProcessState
+{
+    Runnable,
+    BlockedWriting,
+    BlockedReading,
+    WaitingChildren,
+    Zombie
 }
 
 pub struct Process
 {
     regs: RegisterContext,
-    pid: u32,
-    asid: Option<u8>,
+    state: ProcessState,
     name: String,
-    mmu_tbl: Box<memory::mmu::SectionTable>,
+    memory_map: memory::application_map::ApplicationMap,
 }
 

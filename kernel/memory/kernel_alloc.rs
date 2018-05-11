@@ -31,15 +31,44 @@ unsafe impl GlobalAlloc for GlobalKernelAllocator
 {
     unsafe fn alloc(&self, layout: Layout) -> *mut Opaque
     {
+        // Particular cases for exact page or section demands
+        if layout.size() == PAGE_SIZE && layout.align() == PAGE_SIZE
+        {
+            return physical_alloc::allocate_page().to_addr() as *mut Opaque;
+        }
+        else if layout.size() == 2*PAGE_SIZE && layout.align() == 2*PAGE_SIZE
+        {
+            return physical_alloc::allocate_double_page().to_addr() as *mut Opaque;
+        }
+        else if layout.size() == SECTION_SIZE && layout.align() == SECTION_SIZE
+        {
+            return physical_alloc::allocate_section().to_addr() as *mut Opaque;
+        }
+
         KERNEL_ALLOCATOR.alloc(layout).map(|x| x.as_ptr()).unwrap_or(0 as *mut Opaque)
     }
 
     unsafe fn dealloc(&self, ptr: *mut Opaque, layout: Layout)
     {
-        match NonNull::new(ptr)
+        if layout.size() == PAGE_SIZE && layout.align() == PAGE_SIZE
         {
-            Some(ptr) => KERNEL_ALLOCATOR.dealloc(ptr, layout),
-            None => ()
+            physical_alloc::deallocate_page(PageId(ptr as usize / PAGE_SIZE));
+        }
+        else if layout.size() == 2*PAGE_SIZE && layout.align() == 2*PAGE_SIZE
+        {
+            physical_alloc::deallocate_double_page(PageId(ptr as usize / PAGE_SIZE));
+        }
+        else if layout.size() == SECTION_SIZE && layout.align() == SECTION_SIZE
+        {
+            physical_alloc::deallocate_section(SectionId(ptr as usize / SECTION_SIZE));
+        }
+        else
+        {
+            match NonNull::new(ptr)
+            {
+                Some(ptr) => KERNEL_ALLOCATOR.dealloc(ptr, layout),
+                None => ()
+            }
         }
     }
 }
