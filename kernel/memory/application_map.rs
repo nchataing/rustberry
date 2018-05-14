@@ -24,8 +24,10 @@ pub struct ApplicationMap
 #[derive(Debug)]
 pub enum AppMapError
 {
+    NoActiveMap,
     InvalidProgramAddress,
     StackLimitReached,
+    TooManyStackPagesAtOnce,
     HeapLimitReached,
     HeapEmpty,
     HeapPageAlreadyDeallocated,
@@ -105,22 +107,25 @@ impl ApplicationMap
         Ok(())
     }
 
-    pub fn add_stack_page(&mut self) -> Result<(), AppMapError>
+    pub fn add_stack_pages(&mut self, nb: usize) -> Result<(), AppMapError>
     {
-        if self.last_stack_page.0 <= STACK_PAGE_LIMIT.0
+        for _ in 0 .. nb
         {
-            return Err(AppMapError::StackLimitReached);
+            if self.last_stack_page.0 <= STACK_PAGE_LIMIT.0
+            {
+                return Err(AppMapError::StackLimitReached);
+            }
+
+            self.last_stack_page.0 -= 1;
+
+            let phys_page = physical_alloc::allocate_page();
+
+            let flags = RegionFlags { execute: false, global: false,
+                shareable: true, access: RegionAccess::Full,
+                attributes: RegionAttribute::WriteAllocate };
+
+            self.section_table.register_page(self.last_stack_page.to_lower(), phys_page, &flags);
         }
-
-        self.last_stack_page.0 -= 1;
-
-        let phys_page = physical_alloc::allocate_page();
-
-        let flags = RegionFlags { execute: false, global: false,
-            shareable: true, access: RegionAccess::Full,
-            attributes: RegionAttribute::WriteAllocate };
-
-        self.section_table.register_page(self.last_stack_page.to_lower(), phys_page, &flags);
 
         mmio::sync_barrier();
         Ok(())
@@ -227,4 +232,25 @@ impl Drop for ApplicationMap
 
         mmio::sync_barrier();
     }
+}
+
+/**
+ * Add memory to the current application stack until the given address is valid.
+ * Return error if there are too many (16) pages added at once, or if memory is
+ * exhausted.
+ */
+pub fn grow_current_stack(addr: usize) -> Result<(), AppMapError>
+{
+    let page = PageId::from(addr);
+    let mut active_map_ptr = unsafe { ACTIVE_MAP.ok_or(AppMapError::NoActiveMap)? };
+    let active_map = unsafe { active_map_ptr.as_mut() };
+    let last_stack_page = active_map.last_stack_page;
+
+    let nb_pages_to_add = last_stack_page.0 - page.0;
+    if nb_pages_to_add > 16
+    {
+        return Err(AppMapError::TooManyStackPagesAtOnce);
+    }
+
+    active_map.add_stack_pages(nb_pages_to_add)
 }

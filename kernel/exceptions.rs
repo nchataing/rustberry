@@ -1,6 +1,6 @@
 use core::ptr::read_volatile;
 use drivers;
-use memory::kernel_map;
+use memory::{kernel_map, application_map};
 use process::RegisterContext;
 
 #[no_mangle]
@@ -76,16 +76,22 @@ pub extern fn data_abort_handler(instr_addr: usize, data_addr: usize,
 
     if translation_fault && write
     {
-        if data_addr >= kernel_map::STACK_PAGE_LIMIT.to_addr() && 
+        // If we get a fault on a stack, try to make it grow and
+        // retry the instruction
+        if data_addr >= kernel_map::STACK_PAGE_LIMIT.to_addr() &&
            data_addr < kernel_map::FIRST_APPLICATION_PAGE.to_addr()
         {
-            // If we get a fault on the kernel stack, try to make it grow and 
-            // retry the instruction
             kernel_map::grow_svc_stack(data_addr);
+            return;
+        }
+        else if data_addr >= application_map::STACK_PAGE_LIMIT.to_addr()
+        {
+            application_map::grow_current_stack(data_addr).unwrap();
             return;
         }
     }
 
+    // TODO: Do not panic on wrong application code
     let fault_desc = fault_description(status);
     panic!("Data abort at instruction {:#x}.\n\
            Invalid {} at {:#x}{}: {}.",
