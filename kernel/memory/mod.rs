@@ -11,14 +11,35 @@ const FIRST_VIRTUAL_SECTION : usize = 0x401;
 use core::fmt;
 
 /// Section identifier (id below 0x400 are physical section identifiers)
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub struct SectionId(usize);
 
 impl SectionId
 {
-    pub fn to_addr(self) -> *mut u8
+    pub const fn to_addr(self) -> usize
     {
-        (self.0 * SECTION_SIZE) as *mut u8
+        self.0 * SECTION_SIZE
+    }
+
+    pub const fn to_page(self) -> PageId
+    {
+        PageId(self.0 * PAGE_BY_SECTION)
+    }
+}
+
+impl From<usize> for SectionId
+{
+    fn from(addr: usize) -> SectionId
+    {
+        SectionId(addr / SECTION_SIZE)
+    }
+}
+
+impl From<PageId> for SectionId
+{
+    fn from(page: PageId) -> SectionId
+    {
+        SectionId(page.0 / PAGE_BY_SECTION)
     }
 }
 
@@ -30,15 +51,15 @@ impl fmt::Display for SectionId
     }
 }
 
-/// Page identifier (id below 0x4_0000 are physical page identifiers)
-#[derive(Clone, Copy)]
+/// Page identifier (id below 0x401_00 are physical page identifiers)
+#[derive(Clone, Copy, Debug)]
 pub struct PageId(usize);
 
 impl PageId
 {
-    pub fn to_addr(self) -> *mut u8
+    pub const fn to_addr(self) -> usize
     {
-        (self.0 * PAGE_SIZE) as *mut u8
+        self.0 * PAGE_SIZE
     }
 
     pub fn to_lower(self) -> PageId
@@ -51,6 +72,14 @@ impl PageId
     {
         assert!(self.0 < 0x800_00);
         PageId(self.0 + 0x800_00)
+    }
+}
+
+impl From<usize> for PageId
+{
+    fn from(addr: usize) -> PageId
+    {
+        PageId(addr / PAGE_SIZE)
     }
 }
 

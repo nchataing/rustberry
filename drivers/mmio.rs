@@ -91,6 +91,6 @@ macro_rules! timeout_wait_while
 /// Wake up other processors if they are inside wait_for_event
 #[inline] pub fn set_event()
 {
-    unsafe { asm!("sev" :::: "volatile") }
+    unsafe { asm!("sev" ::: "memory" : "volatile") }
 }
 

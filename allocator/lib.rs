@@ -20,7 +20,7 @@ pub unsafe trait HeapPageAlloc
      * allocated ones.
      * It returns the first newly allocated address.
      */
-    unsafe fn reserve_heap_pages(&mut self, nb: usize) -> *mut u8;
+    unsafe fn reserve_heap_pages(&mut self, nb: usize) -> usize;
 
     /// This function deallocate `nb` pages at the end of the heap.
     unsafe fn free_heap_pages(&mut self, nb: usize);
@@ -87,7 +87,7 @@ impl<PageAllocator: HeapPageAlloc> Allocator<PageAllocator>
     {
         let fst_new_page = self.page_allocator.reserve_heap_pages(nb);
         let header;
-        if fst_new_page as usize == self.page_allocator.first_heap_addr()
+        if fst_new_page == self.page_allocator.first_heap_addr()
         {
             let fst_header = fst_new_page as *mut BlockDescriptor;
             let fst_footer = fst_header.offset(1);
@@ -291,7 +291,7 @@ unsafe impl<PageAllocator: HeapPageAlloc> Alloc for Allocator<PageAllocator>
             let cur_block = cur_block.as_ptr();
             let cur_header = cur_block as *mut BlockDescriptor;
             let aligned_addr = align_addr(cur_header.offset(1) as usize, layout);
-            let padding_size = (aligned_addr as usize - cur_header as usize + 3) / 4 - 1;
+            let padding_size = (aligned_addr - cur_header as usize + 3) / 4 - 1;
             // Size in word which is to be allocated
             let size = (layout.size() + 3) / 4;
 

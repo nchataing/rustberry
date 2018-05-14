@@ -10,9 +10,6 @@ reset:
     cmp r4, #0
     bne hang
 
-    // Setup the stack.
-    mov sp, #0x8000
-
     // Clear out bss.
     ldr r4, =__bss_start
     ldr r9, =__bss_end
@@ -30,6 +27,18 @@ reset:
 2:
     cmp r4, r9
     blo 1b
+
+    // Setup the memory map
+    mov sp, #0x8000
+    bl init_memory_map
+
+    // Set abort mode stack
+    cps #0x17
+    mov sp, #0x2000
+
+    // Set supervisor mode stack
+    cps #0x13
+    mov sp, #0x80000000
 
     // Call kernel_main
     bl kernel_main

@@ -40,4 +40,3 @@ pub struct Process
     name: String,
     memory_map: memory::application_map::ApplicationMap,
 }
-

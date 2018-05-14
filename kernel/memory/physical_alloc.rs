@@ -191,7 +191,10 @@ pub fn allocate_double_page() -> PageId
                 let page = &mut PAGES[page_group_id];
                 if *page != 0xFFFF
                 {
-                    for i in (0 .. 16).step_by(2)
+                    // This function is mainly used for allocation of application section pages
+                    // These must be aligned on 2 pages but misaligned on 4 pages
+                    // It explains the strange choice of iterator below
+                    for i in (2 .. 16).step_by(4)
                     {
                         if *page & (0b11 << i) == 0
                         {

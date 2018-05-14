@@ -124,18 +124,18 @@ impl SectionTable
         {
             for offset in 0 .. PAGE_SIZE as isize
             {
-                *(page_addr.offset(offset)) = 0
+                *((page_addr as *mut u8).offset(offset)) = 0
             }
 
             for section in 0 .. 4
             {
                 self.register_page_table(
-                    SectionId(vaddr_base.0 + section as usize),
+                    SectionId(fst_section_id + section as usize),
                     (page_addr as *const PageTable).offset(section),
                     false);
             }
 
-            (page_addr as *mut PageTable).offset(vaddr_base.0 as isize % 4)
+            (page_addr as *mut PageTable).offset((vaddr_base.0 % 4) as isize)
         }
     }
 
@@ -178,10 +178,10 @@ impl SectionTable
         }
     }
 
-    pub fn translate_addr(&self, vaddr: *mut u8) -> Option<*mut u8>
+    pub fn translate_addr(&self, vaddr: usize) -> Option<usize>
     {
-        let vsection = vaddr as usize / SECTION_SIZE;
-        let vpage = (vaddr as usize / PAGE_SIZE) % PAGE_BY_SECTION;
+        let vsection = vaddr / SECTION_SIZE;
+        let vpage = (vaddr / PAGE_SIZE) % PAGE_BY_SECTION;
 
         let entry = self.ttbl[vsection];
         let ppage = match entry & 0b11
@@ -198,7 +198,7 @@ impl SectionTable
             }
             _ => (entry >> 20) * PAGE_BY_SECTION + vpage
         };
-        Some((ppage * PAGE_SIZE + (vaddr as usize % PAGE_SIZE)) as *mut u8)
+        Some(ppage * PAGE_SIZE + (vaddr % PAGE_SIZE))
     }
 }
 

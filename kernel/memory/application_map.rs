@@ -31,10 +31,10 @@ pub enum AppMapError
     HeapPageAlreadyDeallocated,
 }
 
-const FIRST_PRGM_PAGE : PageId = PageId(0x800_00);
-const FIRST_HEAP_PAGE : PageId = PageId(0xA00_00);
-const LAST_STACK_PAGE : PageId = PageId(0xE00_00);
-const AFTER_END_PAGE : PageId = PageId(0x1000_00);
+pub const FIRST_PRGM_PAGE : PageId = PageId(0x800_00);
+pub const FIRST_HEAP_PAGE : PageId = PageId(0xA00_00);
+pub const STACK_PAGE_LIMIT: PageId = PageId(0xE00_00);
+pub const AFTER_END_PAGE : PageId = PageId(0x1000_00);
 
 static mut LAST_ASID: u8 = 0;
 static mut ASID_MAPS: [Option<NonNull<ApplicationMap>>; 256] = [None; 256];
@@ -79,7 +79,6 @@ impl ApplicationMap
             let translation_table = &*self.section_table;
             mmu::set_application_table(translation_table, asid as u32);
         }
-
     }
 
     pub fn register_prgm_page(&mut self, vaddr_base: PageId, executable: bool,
@@ -108,7 +107,7 @@ impl ApplicationMap
 
     pub fn add_stack_page(&mut self) -> Result<(), AppMapError>
     {
-        if self.last_stack_page.0 <= LAST_STACK_PAGE.0
+        if self.last_stack_page.0 <= STACK_PAGE_LIMIT.0
         {
             return Err(AppMapError::StackLimitReached);
         }
@@ -182,7 +181,7 @@ impl ApplicationMap
                 cache::tlb::invalidate_asid_page(asid, self.last_heap_page);
             }
 
-            physical_alloc::deallocate_page(PageId(paddr as usize / PAGE_SIZE));
+            physical_alloc::deallocate_page(PageId(paddr / PAGE_SIZE));
         }
 
         #[cfg(feature = "trace_app_pages")]
@@ -204,10 +203,10 @@ impl Drop for ApplicationMap
         for page in (FIRST_PRGM_PAGE.0 .. self.last_heap_page.0)
                     .chain(self.last_stack_page.0 .. AFTER_END_PAGE.0)
         {
-            let ttbl_addr = ((page - 0x800_00) * PAGE_SIZE) as *mut u8;
+            let ttbl_addr = (page - 0x800_00) * PAGE_SIZE;
             if let Some(paddr) = self.section_table.translate_addr(ttbl_addr)
             {
-                physical_alloc::deallocate_page(PageId(paddr as usize / PAGE_SIZE));
+                physical_alloc::deallocate_page(PageId(paddr / PAGE_SIZE));
             }
         }
 

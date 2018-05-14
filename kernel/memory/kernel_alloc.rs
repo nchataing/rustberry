@@ -3,14 +3,15 @@ use memory::*;
 use core::alloc::{Alloc, GlobalAlloc, Opaque, Layout};
 use allocator::{HeapPageAlloc, Allocator};
 
-const FIRST_HEAP_ADDR: usize = 0x6000_0000;
-
 struct KernelHeapAllocator;
 unsafe impl HeapPageAlloc for KernelHeapAllocator
 {
-    fn first_heap_addr(&self) -> usize { FIRST_HEAP_ADDR }
+    fn first_heap_addr(&self) -> usize
+    {
+        kernel_map::FIRST_HEAP_PAGE.to_addr()
+    }
 
-    unsafe fn reserve_heap_pages(&mut self, nb: usize) -> *mut u8
+    unsafe fn reserve_heap_pages(&mut self, nb: usize) -> usize
     {
         kernel_map::reserve_heap_pages(nb).to_addr()
     }

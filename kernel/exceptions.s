@@ -30,18 +30,22 @@ software_interrupt:
 
 // Prefetch abort
 prefetch_abort:
+    push    {r0-r3, r12, lr}
     sub     r0, lr, #4
     mrc     p15, 0, r1, c5, c0, 1
-    cps     #0x13
-    b       prefetch_abort_handler
+    bl      prefetch_abort_handler
+    pop     {r0-r3, r12, lr}
+    subs    pc, lr, #4
 
 // Data abort
 data_abort:
+    push    {r0-r3, r12, lr}
     sub     r0, lr, #8
     mrc     p15, #0, r1, c6, c0, #0
     mrc     p15, #0, r2, c5, c0, #0
-    cps     #0x13
-    b       data_abort_handler
+    bl      data_abort_handler
+    pop     {r0-r3, r12, lr}
+    subs    pc, lr, #8
 
 // IRQ
 irq:

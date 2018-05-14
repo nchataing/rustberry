@@ -1,5 +1,6 @@
 use core::ptr::read_volatile;
 use drivers;
+use memory::kernel_map;
 use process::RegisterContext;
 
 #[no_mangle]
@@ -59,7 +60,7 @@ fn fault_description(status: u32) -> &'static str
 }
 
 #[no_mangle]
-pub extern fn prefetch_abort_handler(instr_addr: usize, status: u32) -> !
+pub extern fn prefetch_abort_handler(instr_addr: usize, status: u32)
 {
     let fault_desc = fault_description(status);
     panic!("Prefetch abort at instruction {:#x}: {}.", instr_addr, fault_desc)
@@ -67,12 +68,25 @@ pub extern fn prefetch_abort_handler(instr_addr: usize, status: u32) -> !
 
 #[no_mangle]
 pub extern fn data_abort_handler(instr_addr: usize, data_addr: usize,
-                                 status: u32) -> !
+                                 status: u32)
 {
+    let translation_fault = status & (0b1101 | 1 << 10) == 0b0101;
     let cache = status & (1 << 13) != 0;
     let write = status & (1 << 11) != 0;
-    let fault_desc = fault_description(status);
 
+    if translation_fault && write
+    {
+        if data_addr >= kernel_map::STACK_PAGE_LIMIT.to_addr() && 
+           data_addr < kernel_map::FIRST_APPLICATION_PAGE.to_addr()
+        {
+            // If we get a fault on the kernel stack, try to make it grow and 
+            // retry the instruction
+            kernel_map::grow_svc_stack(data_addr);
+            return;
+        }
+    }
+
+    let fault_desc = fault_description(status);
     panic!("Data abort at instruction {:#x}.\n\
            Invalid {} at {:#x}{}: {}.",
            instr_addr, if write { "write" } else { "read" }, data_addr,
