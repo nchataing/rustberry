@@ -23,10 +23,14 @@ undefined_instruction:
 
 // Software interrupt
 software_interrupt:
-    push    {lr}
+    srsdb   sp!, #0x13
+    stmdb   sp, {r0-r12, sp, lr}^
+    sub     sp, sp, #60
+    mov     r0, sp
     bl      software_interrupt_handler
-    pop     {lr}
-    movs    pc, lr
+    ldmia   sp, {r0-r12, sp, lr}^
+    add     sp, sp, #60
+    rfeia   sp!
 
 // Prefetch abort
 prefetch_abort:

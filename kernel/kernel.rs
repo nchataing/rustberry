@@ -7,6 +7,8 @@
 extern crate rlibc;
 
 #[macro_use] extern crate bitflags;
+#[macro_use] extern crate arrayref;
+extern crate goblin;
 
 #[macro_use] extern crate rustberry_drivers as drivers;
 extern crate rustberry_allocator as allocator;
@@ -127,11 +129,17 @@ pub extern fn kernel_main() -> !
         mmio::write(page2.to_addr() as *mut u32, 54);
         println!("{} @ {:x}", mmio::read(page2.to_addr() as *mut u32), page2.to_addr());
 
-        // Should fail
+        // Should fail (read before write in stack)
         //println!("{} @ 0xffff_fffc", mmio::read(0xffff_fffc as *mut u32));
     }
 
     println!("π = {}", core::f32::consts::PI);
+
+    unsafe
+    {
+        // Test the application using svc 0
+        asm!("svc 0" ::: "lr","cc" : "volatile");
+    }
 
     random::init();
     match random::generate()

@@ -1,6 +1,6 @@
-const PAGE_SIZE : usize = 0x1000;
-const SECTION_SIZE : usize = 0x10_0000;
-const PAGE_BY_SECTION : usize = SECTION_SIZE / PAGE_SIZE;
+pub const PAGE_SIZE : usize = 0x1000;
+pub const SECTION_SIZE : usize = 0x10_0000;
+pub const PAGE_BY_SECTION : usize = SECTION_SIZE / PAGE_SIZE;
 
 const MEM_SIZE_MAX : usize = 0x3E00_0000; // ~ 1 Go
 const NUM_SECTION_MAX : usize = MEM_SIZE_MAX / SECTION_SIZE;
@@ -10,9 +10,9 @@ const FIRST_VIRTUAL_SECTION : usize = 0x401;
 
 use core::fmt;
 
-/// Section identifier (id below 0x400 are physical section identifiers)
+/// Section identifier (id below 0x401 are physical section identifiers)
 #[derive(Clone, Copy, Debug)]
-pub struct SectionId(usize);
+pub struct SectionId(pub usize);
 
 impl SectionId
 {
@@ -53,7 +53,7 @@ impl fmt::Display for SectionId
 
 /// Page identifier (id below 0x401_00 are physical page identifiers)
 #[derive(Clone, Copy, Debug)]
-pub struct PageId(usize);
+pub struct PageId(pub usize);
 
 impl PageId
 {
