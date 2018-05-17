@@ -24,6 +24,7 @@ mod process;
 mod filesystem;
 mod sparse_vec;
 mod scheduler;
+pub mod syscall;
 
 use drivers::*;
 
@@ -143,6 +144,19 @@ pub extern fn kernel_main() -> !
         Err(err) =>
         {
             error!("Couldn't launch init process: {:?}", err);
+        },
+    }
+
+    match process::Process::new("memory_monster".to_owned(),
+        include_bytes!("../target/pi2/release/prgm/memory_monster"))
+    {
+        Ok(process) =>
+        {
+            scheduler::add_process(Box::new(process));
+        },
+        Err(err) =>
+        {
+            error!("Couldn't launch monster process: {:?}", err);
         },
     }
 

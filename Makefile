@@ -13,7 +13,7 @@ BOOTLOADER_OBJECTS = $(BUILD_DIR)/bootloader/boot.o \
 					 $(BUILD_DIR)/librustberry_bootloader.a
 BOOTLOADER_LINKER_SCRIPT = bootloader/bootloader_link.ld
 
-PROGRAMS = syscall_loop
+PROGRAMS = syscall_loop memory_monster
 PROGRAM_LINKER_SCRIPT = programs/prgm_link.ld
 
 # Comma-separated list, use help to show the list of available options
@@ -31,7 +31,7 @@ XARGO_FLAGS = $(VERSION_FLAG) --features "$(TARGET) $(FEATURES)"
 
 all: kernel bootloader programs
 
-kernel: $(BUILD_DIR)/$(KERNEL).img $(BUILD_DIR)/$(KERNEL).asm
+kernel: programs $(BUILD_DIR)/$(KERNEL).img $(BUILD_DIR)/$(KERNEL).asm
 
 bootloader: $(BUILD_DIR)/$(BOOTLOADER).img $(BUILD_DIR)/$(BOOTLOADER).asm
 

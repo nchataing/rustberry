@@ -46,8 +46,8 @@ pub enum ProcessState
     Runnable,
     BlockedWriting,
     BlockedReading,
-    WaitingChildren,
-    Zombie
+    WaitingSignal,
+    WaitingTimer,
 }
 
 pub struct Process
@@ -56,7 +56,7 @@ pub struct Process
     pub state: ProcessState,
     pub pid: usize,
     pub name: String,
-    memory_map: memory::application_map::ApplicationMap,
+    pub memory_map: memory::application_map::ApplicationMap,
 }
 
 #[derive(Debug)]

@@ -120,3 +120,40 @@ pub fn add_process(process: Box<Process>) -> Pid
 
     pid
 }
+
+pub fn get_process<'a>(pid: Pid) -> &'a mut Process
+{
+    let scheduler = unsafe { SCHEDULER.as_mut().unwrap() };
+    &mut *scheduler.process_table[pid]
+}
+
+pub fn current_pid() -> Option<Pid>
+{
+    let scheduler = unsafe { SCHEDULER.as_mut().unwrap() };
+    scheduler.current_pid
+}
+
+pub fn current_process<'a>() -> Option<&'a mut Process>
+{
+    Some(get_process(current_pid()?))
+}
+
+pub fn remove_process(pid: Pid) -> Option<Box<Process>>
+{
+    let scheduler = unsafe { SCHEDULER.as_mut().unwrap() };
+
+    let killed_process = scheduler.process_table.remove(pid)?;
+    if scheduler.current_pid == Some(pid)
+    {
+        scheduler.current_pid = None;
+        plan_scheduling();
+    }
+    else if killed_process.state == ProcessState::Runnable
+    {
+        let run_queue = scheduler.run_queue.drain(..)
+                                    .filter(|x| *x != pid).collect();
+        scheduler.run_queue = run_queue;
+    }
+
+    Some(killed_process)
+}

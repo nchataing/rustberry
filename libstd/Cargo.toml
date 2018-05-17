@@ -10,4 +10,4 @@ path = "lib.rs"
 
 [dependencies]
 rlibc = "1.0"
-#rustberry_allocator = { path = "../allocator" }
+rustberry_allocator = { path = "../allocator" }

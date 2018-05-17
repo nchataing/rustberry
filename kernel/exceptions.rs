@@ -1,4 +1,3 @@
-use core::ptr::read_volatile;
 use drivers;
 use memory::{kernel_map, application_map};
 use process::RegisterContext;
@@ -8,23 +7,6 @@ use scheduler;
 pub extern fn undefined_instruction_handler(instr_addr: usize) -> !
 {
     panic!("Undefined instruction at {:#x}", instr_addr)
-}
-
-
-#[no_mangle]
-pub unsafe extern fn software_interrupt_handler(reg_ctx: &mut RegisterContext)
-{
-    // We can get the content of lr when the interruption occur as the 5th
-    // argument as it was pushed on the stack by the assembly code.
-    let syscall_id = read_volatile(reg_ctx.pc.offset(-1)) & 0x00ff_ffff;
-    print!("Syscall {} at {:p}\n", syscall_id, reg_ctx.pc.offset(-1));
-
-    if syscall_id == 0
-    {
-        scheduler::plan_scheduling();
-    }
-
-    scheduler::check_schedule(reg_ctx);
 }
 
 fn fault_description(status: u32) -> &'static str
