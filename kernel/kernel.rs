@@ -7,7 +7,7 @@
 extern crate rlibc;
 
 #[macro_use] extern crate bitflags;
-#[macro_use] extern crate arrayref;
+extern crate plain;
 extern crate goblin;
 
 #[macro_use] extern crate rustberry_drivers as drivers;
@@ -22,18 +22,17 @@ mod atag;
 pub mod memory;
 mod process;
 mod filesystem;
+mod sparse_vec;
+mod scheduler;
 
 use drivers::*;
+
+use alloc::boxed::Box;
+use alloc::borrow::ToOwned;
 
 use memory::kernel_alloc::GlobalKernelAllocator;
 #[global_allocator]
 static ALLOCATOR: GlobalKernelAllocator = GlobalKernelAllocator;
-
-fn timer_handler()
-{
-    print!(".");
-    core_timer::set_remaining_time(core_timer::Physical, 10_000_000);
-}
 
 #[no_mangle]
 pub extern fn init_memory_map()
@@ -57,6 +56,7 @@ pub extern fn kernel_main() -> !
     drop(v1);
 
     interrupts::init();
+    core_timer::init();
 
     match emmc::init()
     {
@@ -87,16 +87,6 @@ pub extern fn kernel_main() -> !
             }
         },
         Err(err) => warn!("SD card failure: {:?}", err)
-    }
-
-    core_timer::init();
-    core_timer::register_callback(core_timer::Physical, timer_handler, false);
-    core_timer::set_enabled(core_timer::Physical, true);
-    core_timer::set_remaining_time(core_timer::Physical, 10_000_000);
-
-    unsafe
-    {
-        asm!("svc 42" ::: "r0","r1","r2","r3","r12","lr","cc" : "volatile");
     }
 
     /*unsafe
@@ -135,12 +125,6 @@ pub extern fn kernel_main() -> !
 
     println!("π = {}", core::f32::consts::PI);
 
-    unsafe
-    {
-        // Test the application using svc 0
-        asm!("svc 0" ::: "lr","cc" : "volatile");
-    }
-
     random::init();
     match random::generate()
     {
@@ -148,10 +132,19 @@ pub extern fn kernel_main() -> !
         None => warn!("Random engine timeout")
     }
 
-    loop
+    scheduler::init();
+    match process::Process::new("init".to_owned(),
+        include_bytes!("../target/pi2/release/prgm/syscall_loop"))
     {
-        let c = uart::read_byte();
-        uart::write_byte(c);
+        Ok(process) =>
+        {
+            scheduler::add_process(Box::new(process));
+        },
+        Err(err) =>
+        {
+            error!("Couldn't launch init process: {:?}", err);
+        },
     }
-}
 
+    scheduler::start();
+}

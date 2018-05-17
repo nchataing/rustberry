@@ -1,6 +1,8 @@
 use alloc::String;
+use core::ptr;
 use memory;
 use system_control;
+use plain;
 use goblin::elf32;
 use drivers::mmio;
 
@@ -41,7 +43,6 @@ impl RegisterContext
 #[derive(PartialEq, Eq)]
 pub enum ProcessState
 {
-    Running,
     Runnable,
     BlockedWriting,
     BlockedReading,
@@ -52,8 +53,9 @@ pub enum ProcessState
 pub struct Process
 {
     regs: RegisterContext,
-    state: ProcessState,
-    name: String,
+    pub state: ProcessState,
+    pub pid: usize,
+    pub name: String,
     memory_map: memory::application_map::ApplicationMap,
 }
 
@@ -70,6 +72,18 @@ pub enum ElfError
     AppMapError(memory::application_map::AppMapError),
 }
 
+impl From<plain::Error> for ElfError
+{
+    fn from(err: plain::Error) -> ElfError
+    {
+        match err
+        {
+            plain::Error::TooShort => ElfError::FileTooSmall,
+            plain::Error::BadAlignment => panic!("Elf bad alignment"),
+        }
+    }
+}
+
 impl From<memory::application_map::AppMapError> for ElfError
 {
     fn from(err: memory::application_map::AppMapError) -> ElfError
@@ -83,7 +97,7 @@ impl Process
     pub fn new(name: String, elf_file: &[u8]) -> Result<Process, ElfError>
     {
         let mut process = Process { regs: RegisterContext::new(),
-            state: ProcessState::Runnable, name,
+            state: ProcessState::Runnable, name, pid: 0,
             memory_map: memory::application_map::ApplicationMap::new() };
 
         process.load_elf(elf_file)?;
@@ -92,27 +106,20 @@ impl Process
 
     pub fn save_context(&mut self, active_ctx: &RegisterContext)
     {
-        assert!(self.state == ProcessState::Running);
         self.regs = active_ctx.clone();
-        self.state = ProcessState::Runnable;
     }
 
     pub fn restore_context(&mut self, active_ctx: &mut RegisterContext)
     {
-        assert!(self.state == ProcessState::Runnable);
         *active_ctx = self.regs.clone();
         self.memory_map.activate();
-        self.state = ProcessState::Running;
     }
 
     fn load_elf(&mut self, file_content: &[u8]) -> Result<(), ElfError>
     {
-        if file_content.len() < 58
-        {
-            return Err(ElfError::FileTooSmall);
-        }
-        let elf_header = elf32::header::Header::from_bytes(array_ref![file_content, 0, 52]);
-        if array_ref![elf_header.e_ident, 0, 4] != elf32::header::ELFMAG
+        let mut elf_header = elf32::header::Header::default();
+        plain::copy_from_bytes(&mut elf_header, file_content)?;
+        if elf_header.e_ident[0 .. 4] != *elf32::header::ELFMAG
         {
             return Err(ElfError::InvalidMagicNumber);
         }
@@ -142,18 +149,12 @@ impl Process
         let prgm_header_entry_size = elf_header.e_phentsize as usize;
         let nb_prgm_header_entry = elf_header.e_phnum as usize;
 
-        if file_content.len() < prgm_header_tbl + nb_prgm_header_entry * prgm_header_entry_size
-        {
-            return Err(ElfError::FileTooSmall);
-        }
-
         for entry in 0 .. nb_prgm_header_entry
         {
             let entry_offset = prgm_header_tbl + entry * prgm_header_entry_size;
 
-            let prgm_header_entry = unsafe {
-                &*(file_content.as_ptr().offset(entry_offset as isize)
-                as *mut elf32::program_header::ProgramHeader) };
+            let mut prgm_header_entry = elf32::program_header::ProgramHeader::default();
+            plain::copy_from_bytes(&mut prgm_header_entry, &file_content[entry_offset..])?;
 
             if prgm_header_entry.p_type != elf32::program_header::PT_LOAD
             {
@@ -169,7 +170,7 @@ impl Process
             // Reserve application program pages and check that all code remain
             // in the range 0x8000_0000 .. 0x9FFF_FFFF.
             let vpage = vaddr / memory::PAGE_SIZE;
-            for page in 0 .. mem_size / memory::PAGE_SIZE
+            for page in 0 .. (mem_size+memory::PAGE_SIZE-1) / memory::PAGE_SIZE
             {
                 self.memory_map.register_prgm_page(memory::PageId(vpage+page),
                     flags & elf32::program_header::PF_X != 0,
@@ -190,7 +191,7 @@ impl Process
                     {
                         let file_pos = (file_offset + offset) as isize;
                         mmio::write((vaddr + offset) as *mut u32,
-                            *(file_content.as_ptr().offset(file_pos) as *const u32));
+                            ptr::read_unaligned(file_content.as_ptr().offset(file_pos) as *const u32));
                     }
                     else
                     {

@@ -2,6 +2,7 @@ use core::ptr::read_volatile;
 use drivers;
 use memory::{kernel_map, application_map};
 use process::RegisterContext;
+use scheduler;
 
 #[no_mangle]
 pub extern fn undefined_instruction_handler(instr_addr: usize) -> !
@@ -20,15 +21,10 @@ pub unsafe extern fn software_interrupt_handler(reg_ctx: &mut RegisterContext)
 
     if syscall_id == 0
     {
-        use alloc::borrow::ToOwned;
-        use alloc::boxed::Box;
-        use process;
-
-        let mut process = Box::new(process::Process::new("syscall_loop".to_owned(),
-            include_bytes!("../target/pi2/release/prgm/syscall_loop")).unwrap());
-        process.restore_context(reg_ctx);
-        Box::leak(process);
+        scheduler::plan_scheduling();
     }
+
+    scheduler::check_schedule(reg_ctx);
 }
 
 fn fault_description(status: u32) -> &'static str
@@ -110,9 +106,10 @@ pub extern fn data_abort_handler(instr_addr: usize, data_addr: usize,
 
 
 #[no_mangle]
-pub extern fn irq_handler(_reg_ctx: &mut RegisterContext)
+pub extern fn irq_handler(reg_ctx: &mut RegisterContext)
 {
     drivers::interrupts::handle_irq();
+    scheduler::check_schedule(reg_ctx);
 }
 
 #[no_mangle]

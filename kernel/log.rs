@@ -1,4 +1,13 @@
 #[macro_export]
+macro_rules! error
+{
+    ($($arg:tt)*) =>
+    {
+        println!("\x1b[31;1mError:\x1b[0m {}", format_args!($($arg)*));
+    }
+}
+
+#[macro_export]
 macro_rules! warn
 {
     ($($arg:tt)*) =>

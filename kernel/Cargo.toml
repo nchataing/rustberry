@@ -11,7 +11,7 @@ path = "kernel.rs"
 [dependencies]
 rlibc = "1.0"
 bitflags = "1"
-arrayref = "0.3.4"
+plain = "0.2.3"
 goblin = { version = "0.0.15", default-features = false, features = ["elf32"] }
 rustberry_drivers = { path = "../drivers" }
 rustberry_allocator = { path = "../allocator" }

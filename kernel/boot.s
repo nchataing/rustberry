@@ -8,7 +8,7 @@ reset:
     mrc p15, #0, r4, c0, c0, #5
     and r4, r4, #3
     cmp r4, #0
-    bne hang
+    bne idle
 
     // Clear out bss.
     ldr r4, =__bss_start
@@ -43,8 +43,8 @@ reset:
     // Call kernel_main
     bl kernel_main
 
-.globl hang
+.globl idle
 // Wait forever
-hang:
+idle:
     wfi
-    b hang
+    b idle
