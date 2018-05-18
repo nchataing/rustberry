@@ -35,12 +35,14 @@ pub fn exit(exit_code: u32) -> !
     loop {} // We should never come here !
 }
 
-pub fn kill(pid: usize)
+pub fn kill(pid: usize) -> bool
 {
+    let result: u32;
     unsafe
     {
-        asm!("svc 6" :: "{r0}"(pid) :: "volatile");
+        asm!("svc 6" : "={r0}"(result) : "{r0}"(pid) :: "volatile");
     }
+    result != 0
 }
 
 pub unsafe fn reserve_heap_pages(nb: isize) -> usize
@@ -58,33 +60,30 @@ pub fn sleep(msec: usize)
     }
 }
 
-pub struct SignalEvent
+pub struct ChildEvent
 {
-    pub sig_id: usize,
-    pub sender_pid: usize,
+    pub pid: usize,
+    pub exit_code: u32,
 }
 
-pub fn wait_signal() -> SignalEvent
+pub fn wait_children() -> ChildEvent
 {
-    let sig_id;
-    let sender_pid;
+    let pid;
+    let exit_code;
     unsafe
     {
-        asm!("svc 9" : "={r0}"(sig_id), "={r1}"(sender_pid)
+        asm!("svc 9" : "={r0}"(pid), "={r1}"(exit_code)
              ::: "volatile");
     }
-    SignalEvent { sig_id, sender_pid }
+    ChildEvent { pid, exit_code }
 }
 
-pub fn send_signal(sig_id: usize, pid: usize)
+/*pub fn new_pipe()
 {
-    unsafe
-    {
-        asm!("svc 10" :: "{r0}"(sig_id), "{r1}"(pid) :: "volatile");
-    }
+    unimplemented!() // svc 10
 }
 
-/*pub fn spawn()
+pub fn spawn()
 {
     unimplemented!() // svc 11
 }*/

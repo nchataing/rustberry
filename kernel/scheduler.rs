@@ -1,5 +1,5 @@
 use sparse_vec::SparseVec;
-use process::{Process, ProcessState, RegisterContext};
+use process::{Process, ProcessState, RegisterContext, ChildEvent};
 use alloc::VecDeque;
 use alloc::boxed::Box;
 use system_control;
@@ -143,17 +143,55 @@ pub fn remove_process(pid: Pid) -> Option<Box<Process>>
     let scheduler = unsafe { SCHEDULER.as_mut().unwrap() };
 
     let killed_process = scheduler.process_table.remove(pid)?;
+    if killed_process.state == ProcessState::Runnable
+    {
+        suspend_process(pid);
+    }
+
+    // Reattach all children to process 0 (init)
+    for child_pid in &killed_process.children_pid
+    {
+        scheduler.process_table[*child_pid].parent_pid = 0
+    }
+
+    Some(killed_process)
+}
+
+pub fn suspend_process(pid: Pid)
+{
+    let scheduler = unsafe { SCHEDULER.as_mut().unwrap() };
+
     if scheduler.current_pid == Some(pid)
     {
         scheduler.current_pid = None;
         plan_scheduling();
     }
-    else if killed_process.state == ProcessState::Runnable
+    else
     {
         let run_queue = scheduler.run_queue.drain(..)
                                     .filter(|x| *x != pid).collect();
         scheduler.run_queue = run_queue;
     }
+}
 
-    Some(killed_process)
+pub fn resume_process(pid: Pid)
+{
+    let scheduler = unsafe { SCHEDULER.as_mut().unwrap() };
+    scheduler.run_queue.push_back(pid);
+}
+
+pub fn send_child_event(reciever_pid: Pid, ev: ChildEvent)
+{
+    let reciever = get_process(reciever_pid);
+    if reciever.state == ProcessState::WaitingChildren
+    {
+        reciever.regs.r0 = ev.pid as u32;
+        reciever.regs.r1 = ev.exit_code;
+        reciever.state = ProcessState::Runnable;
+        resume_process(reciever_pid);
+    }
+    else
+    {
+        reciever.child_events.push(ev);
+    }
 }

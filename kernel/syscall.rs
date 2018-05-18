@@ -1,4 +1,4 @@
-use process::RegisterContext;
+use process::{RegisterContext, ProcessState, ChildEvent};
 use scheduler;
 
 #[no_mangle]
@@ -15,12 +15,12 @@ pub unsafe extern fn software_interrupt_handler(reg_ctx: &mut RegisterContext)
         2 => write(reg_ctx),
         3 => open(reg_ctx),
         4 => close(reg_ctx),*/
-        5 => exit(),
+        5 => exit(reg_ctx.r0),
         6 => kill(reg_ctx),
         7 => reserve_heap_pages(reg_ctx),
-        /*8 => sleep(reg_ctx),
-        9 => wait_signal(reg_ctx),
-        10 => send_signal(reg_ctx),
+        /*8 => sleep(reg_ctx),*/
+        9 => wait_children(reg_ctx),
+        /*10 => new_pipe(reg_ctx),
         11 => spawn(reg_ctx),*/
         _ => warn!("Invalid syscall {}", syscall_id),
     }
@@ -48,13 +48,15 @@ fn close(reg_ctx: &mut RegisterContext)
     unimplemented!()
 }*/
 
-fn exit()
+fn exit(exit_code: u32)
 {
     match scheduler::current_pid()
     {
         Some(pid) =>
         {
-            scheduler::remove_process(pid);
+            let exited_process = scheduler::remove_process(pid).unwrap();
+            scheduler::send_child_event(exited_process.parent_pid,
+                                        ChildEvent { pid, exit_code });
         },
         None => (),
     }
@@ -62,7 +64,16 @@ fn exit()
 
 fn kill(reg_ctx: &mut RegisterContext)
 {
-    scheduler::remove_process(reg_ctx.r0 as usize);
+    match scheduler::remove_process(reg_ctx.r0 as usize)
+    {
+        Some(killed_process) =>
+        {
+            scheduler::send_child_event(killed_process.parent_pid,
+                ChildEvent { pid: killed_process.pid, exit_code: 137 });
+            reg_ctx.r0 = 0;
+        }
+        None => reg_ctx.r0 = 1,
+    }
 }
 
 fn reserve_heap_pages(reg_ctx: &mut RegisterContext)
@@ -80,7 +91,7 @@ fn reserve_heap_pages(reg_ctx: &mut RegisterContext)
                     Err(err) =>
                     {
                         error!("Memory allocation failure: {:?}", err);
-                        exit();
+                        exit(102);
                     }
                 }
             }
@@ -92,7 +103,7 @@ fn reserve_heap_pages(reg_ctx: &mut RegisterContext)
                     Err(err) =>
                     {
                         error!("Memory deallocation failure: {:?}", err);
-                        exit();
+                        exit(102);
                     }
                 }
             }
@@ -104,14 +115,34 @@ fn reserve_heap_pages(reg_ctx: &mut RegisterContext)
 /*fn sleep(reg_ctx: &mut RegisterContext)
 {
     unimplemented!()
-}
+}*/
 
-fn wait_signal(reg_ctx: &mut RegisterContext)
+fn wait_children(reg_ctx: &mut RegisterContext)
 {
-    unimplemented!()
+    match scheduler::current_pid()
+    {
+        Some(pid) =>
+        {
+            let process = scheduler::get_process(pid);
+            match process.child_events.pop()
+            {
+                Some(child_event) =>
+                {
+                    reg_ctx.r0 = child_event.pid as u32;
+                    reg_ctx.r1 = child_event.exit_code;
+                }
+                None =>
+                {
+                    process.state = ProcessState::WaitingChildren;
+                    scheduler::suspend_process(pid);
+                }
+            }
+        },
+        None => (),
+    }
 }
 
-fn send_signal(reg_ctx: &mut RegisterContext)
+/*fn new_pipe(reg_ctx: &mut RegisterContext)
 {
     unimplemented!()
 }
