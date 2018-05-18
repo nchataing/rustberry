@@ -68,7 +68,7 @@ $(BUILD_DIR)/%.o: %.s
 
 -include $(BUILD_DIR)/lib*.d
 $(BUILD_DIR)/librustberry_%.a:
-	cd $* && CC=arm-none-eabi-gcc RUST_TARGET_PATH=$(shell pwd) \
+	cd $* && CC=arm-none-eabi-gcc-6.4 RUST_TARGET_PATH=$(shell pwd) \
 		xargo build --target $(TARGET) $(XARGO_FLAGS)
 
 $(BUILD_DIR)/lib%.a: programs/%/

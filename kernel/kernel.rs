@@ -74,21 +74,28 @@ pub extern fn kernel_main() -> !
                 print!("\n");
             }*/
 
-            match filesystem::mbr_reader::read_partition_table(sdcard)
+            let parts; 
+
+            match filesystem::mbr_reader::read_partition_table(&sdcard)
             {
-                Ok(partition_table) =>
-                {
-                    for partition in partition_table.iter()
-                    {
-                        println!("{:?}", partition);
-                    }
-                },
-                Err(err) => warn!("MBR read failure: {:?}", err)
+                Ok(partition_table) => parts = partition_table,
+                Err(err) => {
+                    use filesystem::mbr_reader::Partition;
+                    warn!("MBR read failure: {:?}", err);
+                    parts = [Partition::new_empty(); 4]
+                }
+            };
+
+            match filesystem::fs::read_bpb_info(sdcard, 
+                                             parts[0].fst_sector as usize)
+            {
+                Ok(bpb) => println!("{:?}", bpb),
+                Err(err) => warn!("FAT read failure! {:?}", err)
             }
         },
         Err(err) => warn!("SD card failure: {:?}", err)
     }
-
+    
     /*unsafe
     {
         // Each of the following operations must fail !
