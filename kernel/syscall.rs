@@ -1,5 +1,6 @@
 use process::{RegisterContext, ProcessState, ChildEvent};
 use scheduler;
+use timer;
 
 #[no_mangle]
 pub unsafe extern fn software_interrupt_handler(reg_ctx: &mut RegisterContext)
@@ -18,10 +19,13 @@ pub unsafe extern fn software_interrupt_handler(reg_ctx: &mut RegisterContext)
         5 => exit(reg_ctx.r0),
         6 => kill(reg_ctx),
         7 => reserve_heap_pages(reg_ctx),
-        /*8 => sleep(reg_ctx),*/
+        8 => sleep(reg_ctx),
         9 => wait_children(reg_ctx),
-        /*10 => new_pipe(reg_ctx),
-        11 => spawn(reg_ctx),*/
+        /*10 => spawn(reg_ctx),
+        11 => new_pipe(reg_ctx),
+        12 => redirect(reg_ctx),
+        13 => start(reg_ctx),
+        14 => suspend(reg_ctx)*/
         _ => warn!("Invalid syscall {}", syscall_id),
     }
 
@@ -50,15 +54,11 @@ fn close(reg_ctx: &mut RegisterContext)
 
 fn exit(exit_code: u32)
 {
-    match scheduler::current_pid()
+    if let Some(pid) = scheduler::current_pid()
     {
-        Some(pid) =>
-        {
-            let exited_process = scheduler::remove_process(pid).unwrap();
-            scheduler::send_child_event(exited_process.parent_pid,
-                                        ChildEvent { pid, exit_code });
-        },
-        None => (),
+        let exited_process = scheduler::remove_process(pid).unwrap();
+        scheduler::send_child_event(exited_process.parent_pid,
+                                    ChildEvent { pid, exit_code });
     }
 }
 
@@ -78,67 +78,68 @@ fn kill(reg_ctx: &mut RegisterContext)
 
 fn reserve_heap_pages(reg_ctx: &mut RegisterContext)
 {
-    match scheduler::current_process()
+    if let Some(current_process) = scheduler::current_process()
     {
-        Some(current_process) =>
+        let nb_pages = reg_ctx.r0 as isize;
+        if nb_pages >= 0
         {
-            let nb_pages = reg_ctx.r0 as isize;
-            if nb_pages >= 0
+            match current_process.memory_map.reserve_heap_pages(nb_pages as usize)
             {
-                match current_process.memory_map.reserve_heap_pages(nb_pages as usize)
+                Ok(page_id) => reg_ctx.r0 = page_id.to_addr() as u32,
+                Err(err) =>
                 {
-                    Ok(page_id) => reg_ctx.r0 = page_id.to_addr() as u32,
-                    Err(err) =>
-                    {
-                        error!("Memory allocation failure: {:?}", err);
-                        exit(102);
-                    }
+                    error!("Memory allocation failure: {:?}", err);
+                    exit(102);
                 }
             }
-            else
+        }
+        else
+        {
+            match current_process.memory_map.free_heap_pages((-nb_pages) as usize)
             {
-                match current_process.memory_map.free_heap_pages((-nb_pages) as usize)
+                Ok(()) => reg_ctx.r0 = 0,
+                Err(err) =>
                 {
-                    Ok(()) => reg_ctx.r0 = 0,
-                    Err(err) =>
-                    {
-                        error!("Memory deallocation failure: {:?}", err);
-                        exit(102);
-                    }
+                    error!("Memory deallocation failure: {:?}", err);
+                    exit(102);
                 }
             }
-        },
-        None => (),
+        }
     }
 }
 
-/*fn sleep(reg_ctx: &mut RegisterContext)
+fn sleep(reg_ctx: &mut RegisterContext)
 {
-    unimplemented!()
-}*/
+    let micro_secs = reg_ctx.r0.saturating_mul(1000);
+    if micro_secs == 0 { return; }
+
+    if let Some(pid) = scheduler::current_pid()
+    {
+        let process = scheduler::get_process(pid).unwrap();
+        process.state = ProcessState::WaitingTimer;
+        timer::add_wakeup_event(pid, micro_secs);
+        scheduler::suspend_process(pid);
+    }
+}
 
 fn wait_children(reg_ctx: &mut RegisterContext)
 {
-    match scheduler::current_pid()
+    if let Some(pid) = scheduler::current_pid()
     {
-        Some(pid) =>
+        let process = scheduler::get_process(pid).unwrap();
+        match process.child_events.pop()
         {
-            let process = scheduler::get_process(pid);
-            match process.child_events.pop()
+            Some(child_event) =>
             {
-                Some(child_event) =>
-                {
-                    reg_ctx.r0 = child_event.pid as u32;
-                    reg_ctx.r1 = child_event.exit_code;
-                }
-                None =>
-                {
-                    process.state = ProcessState::WaitingChildren;
-                    scheduler::suspend_process(pid);
-                }
+                reg_ctx.r0 = child_event.pid as u32;
+                reg_ctx.r1 = child_event.exit_code;
             }
-        },
-        None => (),
+            None =>
+            {
+                process.state = ProcessState::WaitingChildren;
+                scheduler::suspend_process(pid);
+            }
+        }
     }
 }
 

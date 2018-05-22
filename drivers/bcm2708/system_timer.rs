@@ -49,7 +49,15 @@ pub fn set_remaining_time(timer: SystemTimer, micro_secs: u32)
 {
     let current_time = get_time_low();
     let trigger_time = current_time.wrapping_add(micro_secs);
+    set_trigger_time(timer, trigger_time);
+}
 
+/**
+ * Set the timer trigger time in µs.
+ * This is the next time at witch the callback is called.
+ */
+pub fn set_trigger_time(timer: SystemTimer, trigger_time: u32)
+{
     unsafe
     {
         match timer

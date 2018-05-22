@@ -25,6 +25,7 @@ mod filesystem;
 mod sparse_vec;
 mod scheduler;
 pub mod syscall;
+mod timer;
 
 use drivers::*;
 

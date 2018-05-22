@@ -1,3 +1,4 @@
+#[inline]
 pub fn reschedule()
 {
     unsafe
@@ -6,26 +7,31 @@ pub fn reschedule()
     }
 }
 
-/*pub fn read()
+/*#[inline]
+pub fn read()
 {
     unimplemented!() // svc 1
 }
 
+#[inline]
 pub fn write()
 {
     unimplemented!() // svc 2
 }
 
+#[inline]
 pub fn open()
 {
     unimplemented!() // svc 3
 }
 
+#[inline]
 pub fn close()
 {
     unimplemented!() // svc 4
 }*/
 
+#[inline]
 pub fn exit(exit_code: u32) -> !
 {
     unsafe
@@ -35,6 +41,7 @@ pub fn exit(exit_code: u32) -> !
     loop {} // We should never come here !
 }
 
+#[inline]
 pub fn kill(pid: usize) -> bool
 {
     let result: u32;
@@ -45,6 +52,7 @@ pub fn kill(pid: usize) -> bool
     result != 0
 }
 
+#[inline]
 pub unsafe fn reserve_heap_pages(nb: isize) -> usize
 {
     let first_allocated;
@@ -52,6 +60,7 @@ pub unsafe fn reserve_heap_pages(nb: isize) -> usize
     first_allocated
 }
 
+#[inline]
 pub fn sleep(msec: usize)
 {
     unsafe
@@ -66,6 +75,7 @@ pub struct ChildEvent
     pub exit_code: u32,
 }
 
+#[inline]
 pub fn wait_children() -> ChildEvent
 {
     let pid;
@@ -78,11 +88,13 @@ pub fn wait_children() -> ChildEvent
     ChildEvent { pid, exit_code }
 }
 
-/*pub fn new_pipe()
+/*#[inline]
+pub fn new_pipe()
 {
     unimplemented!() // svc 10
 }
 
+#[inline]
 pub fn spawn()
 {
     unimplemented!() // svc 11

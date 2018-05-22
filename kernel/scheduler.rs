@@ -4,6 +4,7 @@ use alloc::VecDeque;
 use alloc::boxed::Box;
 use system_control;
 use drivers::core_timer;
+use timer;
 
 type Pid = usize;
 
@@ -25,6 +26,7 @@ pub fn init()
             run_queue: VecDeque::new(), current_pid: None,
             active: false});
     }
+    timer::init();
 }
 
 fn schedule_timer_handler()
@@ -68,19 +70,15 @@ pub fn check_schedule(active_ctx: &mut RegisterContext)
         scheduler.active = false;
         print!(".");
 
-        match scheduler.current_pid
+        if let Some(pid) = scheduler.current_pid
         {
-            Some(pid) =>
-            {
-                let current_process = &mut scheduler.process_table[pid];
+            let current_process = &mut scheduler.process_table[pid];
 
-                current_process.save_context(active_ctx);
-                if current_process.state == ProcessState::Runnable
-                {
-                    scheduler.run_queue.push_back(pid);
-                }
-            },
-            None => ()
+            current_process.save_context(active_ctx);
+            if current_process.state == ProcessState::Runnable
+            {
+                scheduler.run_queue.push_back(pid);
+            }
         }
 
         scheduler.current_pid = scheduler.run_queue.pop_front();
@@ -121,10 +119,10 @@ pub fn add_process(process: Box<Process>) -> Pid
     pid
 }
 
-pub fn get_process<'a>(pid: Pid) -> &'a mut Process
+pub fn get_process<'a>(pid: Pid) -> Option<&'a mut Process>
 {
     let scheduler = unsafe { SCHEDULER.as_mut().unwrap() };
-    &mut *scheduler.process_table[pid]
+    scheduler.process_table.get_mut(pid).map(|x| &mut **x)
 }
 
 pub fn current_pid() -> Option<Pid>
@@ -135,7 +133,7 @@ pub fn current_pid() -> Option<Pid>
 
 pub fn current_process<'a>() -> Option<&'a mut Process>
 {
-    Some(get_process(current_pid()?))
+    get_process(current_pid()?)
 }
 
 pub fn remove_process(pid: Pid) -> Option<Box<Process>>
@@ -163,8 +161,7 @@ pub fn suspend_process(pid: Pid)
 
     if scheduler.current_pid == Some(pid)
     {
-        scheduler.current_pid = None;
-        plan_scheduling();
+        plan_scheduling(); // check_schedule will stop the current process
     }
     else
     {
@@ -182,16 +179,18 @@ pub fn resume_process(pid: Pid)
 
 pub fn send_child_event(reciever_pid: Pid, ev: ChildEvent)
 {
-    let reciever = get_process(reciever_pid);
-    if reciever.state == ProcessState::WaitingChildren
+    if let Some(reciever) = get_process(reciever_pid)
     {
-        reciever.regs.r0 = ev.pid as u32;
-        reciever.regs.r1 = ev.exit_code;
-        reciever.state = ProcessState::Runnable;
-        resume_process(reciever_pid);
-    }
-    else
-    {
-        reciever.child_events.push(ev);
+        if reciever.state == ProcessState::WaitingChildren
+        {
+            reciever.regs.r0 = ev.pid as u32;
+            reciever.regs.r1 = ev.exit_code;
+            reciever.state = ProcessState::Runnable;
+            resume_process(reciever_pid);
+        }
+        else
+        {
+            reciever.child_events.push(ev);
+        }
     }
 }
