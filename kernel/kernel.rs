@@ -46,7 +46,7 @@ pub extern fn init_memory_map()
 }
 
 #[no_mangle]
-pub extern fn kernel_main() -> !
+pub extern fn kernel_main() -> ()
 {
     uart::init();
     println!("\x1b[32;1mHello world !\x1b[0m");
@@ -65,34 +65,29 @@ pub extern fn kernel_main() -> !
     {
         Ok(sdcard) =>
         {
-            /*let mut first_sdblock = [0; emmc::BLOCK_SIZE];
-            sdcard.read(&mut first_sdblock, 0).unwrap();
-            println!("First SD card block:");
-            for chunk in first_sdblock.chunks(16)
-            {
-                for val in chunk
-                {
-                    print!("{:02x}, ", val);
-                }
-                print!("\n");
-            }*/
+            let parts; 
 
-            match filesystem::mbr_reader::read_partition_table(sdcard)
+            match filesystem::mbr_reader::read_partition_table(&sdcard)
             {
-                Ok(partition_table) =>
-                {
-                    for partition in partition_table.iter()
-                    {
-                        println!("{:?}", partition);
-                    }
-                },
-                Err(err) => warn!("MBR read failure: {:?}", err)
+                Ok(partition_table) => parts = partition_table,
+                Err(err) => {
+                    use filesystem::mbr_reader::Partition;
+                    warn!("MBR read failure: {:?}", err);
+                    parts = [Partition::new_empty(); 4]
+                }
+            };
+
+            match filesystem::fat32::fs::read_bpb_info(sdcard, 
+                                             parts[0].fst_sector as usize)
+            {
+                Ok(bpb) => println!("{:?}", bpb),
+                Err(err) => warn!("FAT read failure! {:?}", err)
             }
         },
         Err(err) => warn!("SD card failure: {:?}", err)
     }
-
-    /*unsafe
+    
+    unsafe
     {
         // Each of the following operations must fail !
         mmio::write(0 as *mut u32, 0); // Data abort
@@ -102,7 +97,7 @@ pub extern fn kernel_main() -> !
         mmio::write(page.to_addr() as *mut u32, 42);
         memory::kernel_map::free_heap_pages(1);
         println!("{}", mmio::read(page.to_addr() as *mut u32));
-    }*/
+    }
 
     unsafe
     {
