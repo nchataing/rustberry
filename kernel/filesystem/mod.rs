@@ -15,24 +15,37 @@ enum FileType
     BlockDevice
 }
 
-struct DirEntry
+pub struct DirEntry
 {
     name: String,
     typ: FileType,
     size: usize,
 }
 
-trait Dir
+impl DirEntry
 {
-    fn list_entries(&self) -> Vec<DirEntry>;
+    pub fn print(&self)
+    {
+        match self.typ {
+            FileType::File => print!("FILE "),
+            FileType::Directory => print!("DIR  "),
+            _ => ()
+        };
+        print!("{}\n", self.name);
+    }
+}
 
-    fn get_file(&self, name: &str) -> io::Result<Box<File>>;
-    fn get_subdir(&self, name: &str) -> io::Result<Box<Dir>>;
+pub trait Dir
+{
+    fn list_entries(&mut self) -> Vec<DirEntry>;
+
+    fn get_file(&mut self, name: &str) -> io::Result<Box<File>>;
+    fn get_subdir(&mut self, name: &str) -> io::Result<Box<Dir>>;
     fn add_file(&mut self, name: &str) -> io::Result<()>;
     fn add_subdir(&mut self, name: &str) -> io::Result<()>;
     fn delete_child(&mut self, name: &str) -> io::Result<()>;
 
-    fn open_file(&self, path: &str) -> io::Result<Box<File>> where Self: Sized
+    fn open_file(&mut self, path: &str) -> io::Result<Box<File>> where Self: Sized
     {
         let path : Vec<&str> = path.rsplitn(2, '/').collect();
         if path.len() == 1
@@ -41,12 +54,12 @@ trait Dir
         }
         else
         {
-            let dir = self.open_dir(path[1])?;
+            let mut dir = self.open_dir(path[1])?;
             dir.get_file(path[0])
         }
     }
 
-    fn open_dir(&self, path: &str) -> io::Result<Box<Dir>> where Self: Sized
+    fn open_dir(&mut self, path: &str) -> io::Result<Box<Dir>> where Self: Sized
     {
         let mut current_dir : Option<Box<Dir>> = None;
         for subdir in path.split('/')
@@ -55,7 +68,7 @@ trait Dir
 
             match current_dir
             {
-                Some(cur_dir) =>
+                Some(mut cur_dir) =>
                 {
                     let next_dir = cur_dir.get_subdir(subdir)?;
                     current_dir = Some(next_dir);

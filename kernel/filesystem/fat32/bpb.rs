@@ -6,7 +6,7 @@ pub struct BiosParameterBlock {
     bytes_per_sector: u16,
     pub sectors_per_cluster: u8,
     pub reserved_sectors: u16,
-    fats: u8,
+    pub fats: u8,
     sector_per_cluster: usize,
     root_entries: u16,
     // = 0 if there are more than 65535 sectors
@@ -24,7 +24,7 @@ pub struct BiosParameterBlock {
     pub sectors_per_fat_32: u32,
     extended_flags: u16,
     fs_version: u16,
-    root_fst_cluster: u32,
+    pub root_fst_cluster: u32,
     fs_info_sector: u16,
     backup_boot_sector: u16,
     // These bytes should be 0
@@ -46,7 +46,7 @@ pub enum FatError
     NoClusterAvailable,
 }
 
-pub fn read_bpb_info(card: SdCard, fat_part_block: usize) 
+pub fn dump(card: &SdCard, fat_part_block: usize) 
     -> Result<BiosParameterBlock, FatError>
 {
     let mut bpb_block = [0; BLOCK_SIZE];

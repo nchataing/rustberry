@@ -34,6 +34,10 @@ use alloc::boxed::Box;
 use alloc::borrow::ToOwned;
 
 use memory::kernel_alloc::GlobalKernelAllocator;
+
+use filesystem::fat32::table::Fat; 
+use filesystem::Dir;
+
 #[global_allocator]
 static ALLOCATOR: GlobalKernelAllocator = GlobalKernelAllocator;
 
@@ -77,10 +81,15 @@ pub extern fn kernel_main() -> ()
                 }
             };
 
-            match filesystem::fat32::fs::read_bpb_info(sdcard, 
-                                             parts[0].fst_sector as usize)
+            match Fat::new(&sdcard, parts[0].fst_sector as usize, 0)
             {
-                Ok(bpb) => println!("{:?}", bpb),
+                Ok(fs) => {
+                    let mut root_dir = fs.root_dir();
+                    let root_entries = root_dir.list_entries();
+                    for e in &root_entries {
+                        e.print()
+                    }
+                },
                 Err(err) => warn!("FAT read failure! {:?}", err)
             }
         },

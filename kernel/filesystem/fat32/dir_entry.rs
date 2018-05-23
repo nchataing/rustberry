@@ -1,7 +1,7 @@
-//use emmc::{SdCard, BLOCK_SIZE};
-use filesystem::fat32::table::Fat;
 use filesystem::buffer_io::*;
 use filesystem::fat32::file::File;
+use filesystem::FileType;
+use filesystem::DirEntry as VfsDirEntry;
 use io::*;
 
 use alloc::string::*;
@@ -19,7 +19,7 @@ const LND       : u8 = READ_ONLY | HIDDEN | SYSTEM | VOLUME_ID;
 #[derive(Default)]
 pub struct DirEntry {
     // General information
-    name: [u8; 11],
+    pub name: [u8; 11],
     attrs: u8,
     reserved_0: u8,
     create_time_0: u8,
@@ -33,7 +33,7 @@ pub struct DirEntry {
     size: u32,
 
     // Position on SdCard and dirty information
-    pos: usize,
+    pub pos: usize,
     dirty: bool,
     
     // long name option
@@ -43,7 +43,7 @@ pub struct DirEntry {
 
 impl DirEntry
 {
-    pub fn dump_from_file(file: &mut File, pos : usize) -> Self
+    pub fn dump(file: &mut File, pos : usize) -> Self
     {
         let mut buf = [0; 32];
         let mut ext_descr = true;
@@ -146,6 +146,14 @@ impl DirEntry
         self.fst_cluster_hi = (cluster >> 16) as u16;
         self.fst_cluster_lo = cluster as u16;
     }
+
+    pub fn to_vfs_dir_entry(&self) -> VfsDirEntry
+    {
+        let name = if let Some(ref name) = self.long_name { name.clone() } 
+            else { String::from_utf8(self.name.to_vec()).unwrap() };
+        let typ = if self.is_dir() { FileType::Directory }
+            else { FileType::File };
+        let size = self.size as usize;
+        VfsDirEntry { name, typ, size }
+    }
 }
-
-

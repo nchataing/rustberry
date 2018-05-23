@@ -1,6 +1,8 @@
 use emmc::{SdCard, BLOCK_SIZE};
-use filesystem::fat32::fs::{FatError, BiosParameterBlock};
+use filesystem::fat32::bpb;
+use filesystem::fat32::bpb::{FatError, BiosParameterBlock};
 use filesystem::buffer_io::*;
+use filesystem::fat32::{file::File, dir::Dir};
 
 pub enum Entry
 {
@@ -14,31 +16,40 @@ pub struct Fat<'a>
 {
     // fst sector of the FAT, regardless of the partition
     pub fst_sector: usize,
+    pub fst_data_sector: usize,
     pub fat_size: usize,
     pub sectors_per_cluster: usize,
     pub cluster_size: usize,
+    pub root_fst_cluster: u32,
     pub card: &'a SdCard,
 }
 
 impl<'a> Fat<'a>
 {
     // which indicates which FAT is being used.
-    pub fn new(bpb: &BiosParameterBlock, fst_part_sector: usize, which: usize,
-               card: &'a SdCard) 
-        -> Fat<'a>
+    pub fn new(card: &'a SdCard, fst_part_sector: usize, which: usize) 
+        -> Result<Fat<'a>, FatError>
     {
+        let bpb = match bpb::dump(card, fst_part_sector) {
+            Ok(bpb) => bpb,
+            Err(err) => return Err(err)
+        };
         let fst_sector = fst_part_sector + bpb.reserved_sectors as usize
                         + which * (bpb.sectors_per_fat_32 as usize);
         let sectors_per_cluster = bpb.sectors_per_cluster as usize;
         let cluster_size = sectors_per_cluster * BLOCK_SIZE;
-        Fat 
+        let fst_data_sector = (bpb.reserved_sectors as usize) +
+            (bpb.fats as usize) * (bpb.sectors_per_fat_32 as usize) ;
+        Ok(Fat 
         { 
-            fst_sector, 
+            fst_sector,
+            fst_data_sector,
             card,
             fat_size: bpb.sectors_per_fat_32 as usize,
             sectors_per_cluster,
+            root_fst_cluster: bpb.root_fst_cluster as u32,
             cluster_size
-        }
+        })
     }
 
     pub fn get_entry(&self, cluster: u32) -> Result<Entry, FatError>
@@ -146,15 +157,21 @@ impl<'a> Fat<'a>
 
     pub fn read_cluster(&self, buf: &mut [u8], cluster: u32)
     {
-        let sector = self.fst_sector + 
+        let sector = self.fst_data_sector + 
             (cluster as usize) * self.sectors_per_cluster;
         self.card.read(buf, sector).unwrap() 
     }
 
     pub fn write_cluster(&self, buf: &mut [u8], cluster: u32)
     {
-        let sector = self.fst_sector + 
+        let sector = self.fst_data_sector + 
             (cluster as usize) * self.sectors_per_cluster;
         self.card.write(buf, sector).unwrap()
+    }
+    
+    pub fn root_dir(&'a self) -> Dir<'a>
+    {
+        let root_file = File::new(self, Some(self.root_fst_cluster));
+        Dir { file: root_file }
     }
 }
