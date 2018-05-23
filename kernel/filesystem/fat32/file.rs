@@ -1,5 +1,5 @@
-use filesystem::table::{Fat, Entry};
-use filesystem::dir_entry::DirEntry;
+use filesystem::fat32::table::{Fat, Entry};
+use filesystem::fat32::dir_entry::DirEntry;
 use core::cmp::min;
 pub enum FileError
 {

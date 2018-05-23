@@ -1,5 +1,5 @@
 //use emmc::{SdCard, BLOCK_SIZE};
-use filesystem::table::Fat;
+use filesystem::fat32::table::Fat;
 
 // File attributes
 const READ_ONLY : u8 = 0x01;

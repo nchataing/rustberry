@@ -1,5 +1,5 @@
 use emmc::{SdCard, BLOCK_SIZE};
-use filesystem::fs::{FatError, BiosParameterBlock};
+use filesystem::fat32::fs::{FatError, BiosParameterBlock};
 use filesystem::io::*;
 
 pub enum Entry

@@ -86,7 +86,7 @@ pub extern fn kernel_main() -> ()
                 }
             };
 
-            match filesystem::fs::read_bpb_info(sdcard, 
+            match filesystem::fat32::fs::read_bpb_info(sdcard, 
                                              parts[0].fst_sector as usize)
             {
                 Ok(bpb) => println!("{:?}", bpb),
