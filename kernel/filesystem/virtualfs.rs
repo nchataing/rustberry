@@ -1,22 +1,23 @@
-use genfs::{Fs, File, Dir, DirEntry};
-use alloc::BTreeMap;
+use fs;
+use alloc::{String, BTreeMap};
+use alloc::boxed::Box;
 
-pub struct VirtualFs
+pub struct VirtualDir
 {
     filesystem: Option<Box<Fs>>,
-    children: BTreeMap<VirtualFs>,
+    children: BTreeMap<String, VirtualFs>,
 }
 
-impl VirtualFs
+impl VirtualDir
 {
-    pub fn new() -> VirtualFs
+    pub fn new() -> VirtualDir
     {
-        VirtualFs { filesystem: None, children: BTreeMap::new() }
+        VirtualDir { filesystem: None, children: BTreeMap::new() }
     }
 
     pub fn mount(&mut self, fs: Box<Fs>, path: &str)
     {
-        // Add a new concrete filesystem in the VirtualFs
+        // Add a new concrete filesystem in the virtual filesystem
         if path.length() == 0
         {
             self.filesystem = Some(fs);
@@ -50,5 +51,10 @@ impl VirtualFs
                 sub_fs.mount(fs, path_tail);
             }
         }
+    }
+
+    pub fn unmount(&mut self, path: &str)
+    {
+        //
     }
 }
