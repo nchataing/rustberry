@@ -32,6 +32,6 @@ trait Dir
 }
 
 pub mod mbr_reader;
-pub mod io;
+pub mod buffer_io;
 pub mod fat32;
 
