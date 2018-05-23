@@ -1,0 +1,9 @@
+[package]
+name = "rustberry_io"
+version = "0.0.0"
+authors = ["The Rust Project Developers",
+           "Stripped down by Guillaume Bertholon"]
+
+[lib]
+crate-type = ["rlib"]
+path = "lib.rs"

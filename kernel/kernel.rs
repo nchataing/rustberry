@@ -12,6 +12,7 @@ extern crate goblin;
 
 #[macro_use] extern crate rustberry_drivers as drivers;
 extern crate rustberry_allocator as allocator;
+extern crate rustberry_io as io;
 
 #[macro_use] mod log;
 #[macro_use] mod linker_symbol;

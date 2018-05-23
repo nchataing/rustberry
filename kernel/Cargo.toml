@@ -15,6 +15,7 @@ plain = "0.2.3"
 goblin = { version = "0.0.15", default-features = false, features = ["elf32"] }
 rustberry_drivers = { path = "../drivers" }
 rustberry_allocator = { path = "../allocator" }
+rustberry_io = { path = "../io" }
 
 [features]
 pi2 = ["rustberry_drivers/pi2"]

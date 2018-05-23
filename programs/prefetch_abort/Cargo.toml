@@ -8,4 +8,4 @@ crate-type = ["staticlib"]
 path = "main.rs"
 
 [dependencies]
-rustberry_std = { path = "../../libstd" }
+rustberry_std = { path = "../../std" }
