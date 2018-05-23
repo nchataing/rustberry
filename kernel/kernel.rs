@@ -148,8 +148,8 @@ pub extern fn kernel_main() -> !
         },
     }
 
-    match process::Process::new("memory_monster".to_owned(),
-        include_bytes!("../target/pi2/release/prgm/memory_monster"))
+    match process::Process::new("undefined".to_owned(),
+        include_bytes!("../target/pi2/release/prgm/undefined"))
     {
         Ok(process) =>
         {
@@ -157,7 +157,7 @@ pub extern fn kernel_main() -> !
         },
         Err(err) =>
         {
-            error!("Couldn't launch monster process: {:?}", err);
+            error!("Couldn't launch undefined process: {:?}", err);
         },
     }
 

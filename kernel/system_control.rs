@@ -22,6 +22,16 @@ pub fn get_cpsr() -> u32
     }
 }
 
+pub fn get_spsr() -> u32
+{
+    unsafe
+    {
+        let spsr;
+        asm!("mrs $0, spsr" : "=r"(spsr));
+        spsr
+    }
+}
+
 // Note: This function must be called only with compile time constant values
 // or it will generate a compilation error.
 #[inline(always)]

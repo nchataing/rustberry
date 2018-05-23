@@ -145,6 +145,10 @@ pub fn remove_process(pid: Pid) -> Option<Box<Process>>
     {
         suspend_process(pid);
     }
+    if scheduler.current_pid == Some(pid)
+    {
+        scheduler.current_pid = None;
+    }
 
     // Reattach all children to process 0 (init)
     for child_pid in &killed_process.children_pid
