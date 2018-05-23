@@ -17,9 +17,17 @@ exception_vector:
 
 // Undefined instruction interrupt
 undefined_instruction:
-    sub     r0, lr, #4
+    sub     lr, lr, #4
+    srsdb   sp!, #0x13
     cps     #0x13
-    b       undefined_instruction_handler
+    stmdb   sp, {r0-r12, sp, lr}^
+    sub     sp, sp, #60
+    mov     r0, sp
+    cps     #0x13
+    bl      undefined_instruction_handler
+    ldmia   sp, {r0-r12, sp, lr}^
+    add     sp, sp, #60
+    rfeia   sp!
 
 // Software interrupt
 software_interrupt:
@@ -34,6 +42,7 @@ software_interrupt:
 
 // Prefetch abort
 prefetch_abort:
+    mov     sp, #0x2000
     push    {r0-r3, r12, lr}
     sub     r0, lr, #4
     mrc     p15, 0, r1, c5, c0, 1
@@ -43,6 +52,7 @@ prefetch_abort:
 
 // Data abort
 data_abort:
+    mov     sp, #0x2000
     push    {r0-r3, r12, lr}
     sub     r0, lr, #8
     mrc     p15, #0, r1, c6, c0, #0

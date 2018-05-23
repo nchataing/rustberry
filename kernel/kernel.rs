@@ -12,6 +12,7 @@ extern crate goblin;
 
 #[macro_use] extern crate rustberry_drivers as drivers;
 extern crate rustberry_allocator as allocator;
+extern crate rustberry_io as io;
 
 #[macro_use] mod log;
 #[macro_use] mod linker_symbol;
@@ -24,6 +25,8 @@ mod process;
 mod filesystem;
 mod sparse_vec;
 mod scheduler;
+pub mod syscall;
+mod timer;
 
 use drivers::*;
 
@@ -150,6 +153,19 @@ pub extern fn kernel_main() -> ()
         Err(err) =>
         {
             error!("Couldn't launch init process: {:?}", err);
+        },
+    }
+
+    match process::Process::new("undefined".to_owned(),
+        include_bytes!("../target/pi2/release/prgm/undefined"))
+    {
+        Ok(process) =>
+        {
+            scheduler::add_process(Box::new(process));
+        },
+        Err(err) =>
+        {
+            error!("Couldn't launch undefined process: {:?}", err);
         },
     }
 

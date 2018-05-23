@@ -1,0 +1,11 @@
+[package]
+name = "data_abort"
+version = "0.0.0"
+authors = ["Guillaume Bertholon <guillaume.bertholon@ens.fr>"]
+
+[lib]
+crate-type = ["staticlib"]
+path = "main.rs"
+
+[dependencies]
+rustberry_std = { path = "../../std" }

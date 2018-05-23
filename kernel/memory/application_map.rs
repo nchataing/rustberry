@@ -166,7 +166,7 @@ impl ApplicationMap
         Ok(first_allocated_page)
     }
 
-    pub unsafe fn free_heap_pages(&mut self, nb: usize) -> Result<(), AppMapError>
+    pub fn free_heap_pages(&mut self, nb: usize) -> Result<(), AppMapError>
     {
         for _ in 0 .. nb
         {

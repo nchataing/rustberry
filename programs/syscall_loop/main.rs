@@ -19,6 +19,8 @@ pub extern fn main()
             }
             asm!("" :: "{r0}"(&TABLE) :: "volatile");
 
+            std::syscall::sleep(1000);
+
             asm!("svc 42" ::: "r0","r1","r2","r3","r12","lr","cc" : "volatile");
         }
     }

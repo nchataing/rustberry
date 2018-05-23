@@ -1,4 +1,4 @@
-use alloc::String;
+use alloc::{Vec,String};
 use core::ptr;
 use memory;
 use system_control;
@@ -46,17 +46,26 @@ pub enum ProcessState
     Runnable,
     BlockedWriting,
     BlockedReading,
+    WaitingTimer,
     WaitingChildren,
-    Zombie
+}
+
+pub struct ChildEvent
+{
+    pub pid: usize,
+    pub exit_code: u32,
 }
 
 pub struct Process
 {
-    regs: RegisterContext,
+    pub regs: RegisterContext,
     pub state: ProcessState,
     pub pid: usize,
+    pub parent_pid: usize,
+    pub children_pid: Vec<usize>,
+    pub child_events: Vec<ChildEvent>,
     pub name: String,
-    memory_map: memory::application_map::ApplicationMap,
+    pub memory_map: memory::application_map::ApplicationMap,
 }
 
 #[derive(Debug)]
@@ -97,8 +106,9 @@ impl Process
     pub fn new(name: String, elf_file: &[u8]) -> Result<Process, ElfError>
     {
         let mut process = Process { regs: RegisterContext::new(),
-            state: ProcessState::Runnable, name, pid: 0,
-            memory_map: memory::application_map::ApplicationMap::new() };
+            state: ProcessState::Runnable, name, pid: 0, parent_pid: 0,
+            children_pid: vec![], child_events: vec![],
+            memory_map: memory::application_map::ApplicationMap::new()};
 
         process.load_elf(elf_file)?;
         Ok(process)
