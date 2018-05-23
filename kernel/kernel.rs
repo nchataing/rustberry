@@ -30,8 +30,8 @@ mod timer;
 
 use drivers::*;
 
-// use alloc::boxed::Box;
-// use alloc::borrow::ToOwned;
+use alloc::boxed::Box;
+use alloc::borrow::ToOwned;
 
 use memory::kernel_alloc::GlobalKernelAllocator;
 #[global_allocator]
@@ -65,18 +65,6 @@ pub extern fn kernel_main() -> ()
     {
         Ok(sdcard) =>
         {
-            /*let mut first_sdblock = [0; emmc::BLOCK_SIZE];
-            sdcard.read(&mut first_sdblock, 0).unwrap();
-            println!("First SD card block:");
-            for chunk in first_sdblock.chunks(16)
-            {
-                for val in chunk
-                {
-                    print!("{:02x}, ", val);
-                }
-                print!("\n");
-            }*/
-
             let parts; 
 
             match filesystem::mbr_reader::read_partition_table(&sdcard)
@@ -99,7 +87,7 @@ pub extern fn kernel_main() -> ()
         Err(err) => warn!("SD card failure: {:?}", err)
     }
     
-    /*unsafe
+    unsafe
     {
         // Each of the following operations must fail !
         mmio::write(0 as *mut u32, 0); // Data abort
@@ -109,7 +97,7 @@ pub extern fn kernel_main() -> ()
         mmio::write(page.to_addr() as *mut u32, 42);
         memory::kernel_map::free_heap_pages(1);
         println!("{}", mmio::read(page.to_addr() as *mut u32));
-    }*/
+    }
 
     unsafe
     {
@@ -141,7 +129,7 @@ pub extern fn kernel_main() -> ()
         Some(rand) => println!("Random -> {:#08x}", rand),
         None => warn!("Random engine timeout")
     }
-/*
+
     scheduler::init();
     match process::Process::new("init".to_owned(),
         include_bytes!("../target/pi2/release/prgm/syscall_loop"))
@@ -170,5 +158,4 @@ pub extern fn kernel_main() -> ()
     }
 
     scheduler::start();
-*/
 }

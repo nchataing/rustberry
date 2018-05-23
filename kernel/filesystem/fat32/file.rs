@@ -1,10 +1,7 @@
 use filesystem::fat32::table::{Fat, Entry};
 use filesystem::fat32::dir_entry::DirEntry;
 use core::cmp::min;
-pub enum FileError
-{
-    Error
-}
+use io::*;
 
 pub struct File<'a>
 {
@@ -27,6 +24,15 @@ impl <'a> File <'a>
             offset: 0,
             entry: None,
             fs: fat,
+        }
+    }
+
+    pub fn get_size(&self) -> Option<usize>
+    {
+        match self.entry
+        {
+            None => None,
+            Some(ref e) => Some(e.size())
         }
     }
 
@@ -54,7 +60,12 @@ impl <'a> File <'a>
         }
     }
 
-    pub fn read(&mut self, buf: &mut [u8]) -> Result<usize, FileError>
+    
+}
+
+impl <'a> Read for File<'a>
+{
+    fn read(&mut self, buf: &mut [u8]) -> Result<usize>
     {
         let cluster_size = self.fs.cluster_size;
         let cur_cluster = match self.cur_cluster {
@@ -66,14 +77,19 @@ impl <'a> File <'a>
                     // Get next cluster
                     match self.fs.get_entry(n).unwrap()
                     {
-                        Entry::Free | Entry::Bad => 
-                            return Err(FileError::Error),
+                        Entry::Free | Entry::Bad => {
+                            let error = Error
+                            {
+                                kind: ErrorKind::InvalidData,
+                                error: "Bad next cluster in file"
+                            };
+                            return Err(error)
+                        },
                         Entry::EndOfChain => return Ok(0),
                         Entry::Full(m) => m
                     }
                 }
-                else
-                {
+                else {
                     n
                 }
             }
@@ -98,8 +114,11 @@ impl <'a> File <'a>
             &cluster_buf[offset_in_cluster .. offset_in_cluster + read_size]);
         Ok(read_size)
     }
+}
 
-    pub fn write(&mut self, buf: &mut [u8]) -> Result<usize, FileError>
+impl <'a> Write for File<'a>
+{
+    fn write(&mut self, buf: &[u8]) -> Result<usize>
     {
         let cluster_size = self.fs.cluster_size;
         let offset = self.offset % cluster_size;
@@ -119,8 +138,14 @@ impl <'a> File <'a>
                 Some(n) => {
                     match self.fs.get_entry(n).unwrap()
                     {
-                        Entry::Free | Entry::Bad => 
-                            return Err(FileError::Error),
+                        Entry::Free | Entry::Bad => {
+                            let error = Error
+                            {
+                                kind: ErrorKind::InvalidData,
+                                error: "Bad next cluster in file"
+                            };
+                            return Err(error)
+                        }, 
                         Entry::EndOfChain => None,
                         Entry::Full(m) => Some(m)
                     }
@@ -148,6 +173,7 @@ impl <'a> File <'a>
         {
             match self.cur_cluster {
                 Some(n) => n,
+                // TODO: allocate cluster instead of panicking
                 None => panic!("Offset inside cluster but no cluster allocated"),
             }
         };
@@ -162,5 +188,92 @@ impl <'a> File <'a>
         self.update_size();
         Ok(write_size)
     }
+
+    fn flush(&mut self) -> Result<()>
+    {
+        Ok(())
+    }
 }
 
+impl <'a> Seek for File<'a>
+{
+    fn seek(&mut self, pos: SeekFrom) -> Result<u64>
+    {
+        let (cur_pos, offset) = match pos
+        {
+            SeekFrom::Start(s) => (0, s as usize),
+            SeekFrom::End(neg_offset) => match self.get_size()
+            {
+                None => panic!("Unknown file size"),
+                Some(size) => {
+                    let pos = size as i64 + neg_offset;
+                    if neg_offset >= 0 { 
+                        return Ok(size as u64) 
+                    }
+                    else if pos <= 0 {
+                        let error = Error
+                        {
+                            kind: ErrorKind::InvalidInput,
+                            error: "Can't read before byte 0 of file"
+                        };
+                        return Err(error)
+                    }
+                    else if pos as usize >= self.offset {
+                        (self.offset, pos as usize - self.offset)
+                    }
+                    else {
+                        (0, (size as i64 + neg_offset) as usize) 
+                    }
+                }
+            },
+            SeekFrom::Current(offset) => 
+            {
+                if offset >= 0 {
+                    (self.offset, offset as usize)
+                }
+                else if self.offset as i64 - offset <= 0 {
+                    let error = Error
+                    {
+                        kind: ErrorKind::InvalidInput,
+                        error: "Can't read before byte 0 of file"
+                    };    
+                    return Err(error)
+                }
+                else {
+                    (0, self.offset - (offset as usize))
+                }
+            },
+        };
+        
+        if cur_pos == 0 {
+            self.cur_cluster = self.fst_cluster;
+        }
+        let cluster_size = self.fs.cluster_size;
+        let nb_cluster_to_pass = cur_pos / cluster_size 
+            - (cur_pos + offset) / cluster_size;
+
+        // Get to good cluster
+        for _i in 0 .. nb_cluster_to_pass
+        {
+            self.cur_cluster = match self.cur_cluster
+            {
+                None => panic!("Seeking in invalid cluster"),
+                Some(n) => match self.fs.get_entry(n).unwrap()
+                {
+                    Entry::Free | Entry::Bad => {
+                        let error = Error
+                        {
+                            kind: ErrorKind::InvalidData,
+                            error: "Bad next cluster in file"
+                        };
+                        return Err(error)
+                    }, 
+                    Entry::EndOfChain => None,
+                    Entry::Full(m) => Some(m)
+                }
+            }
+        }
+        self.offset = offset - cur_pos;
+        Ok(self.offset as u64)
+    }
+}
