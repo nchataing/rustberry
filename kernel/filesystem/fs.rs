@@ -42,6 +42,8 @@ pub struct BiosParameterBlock {
 pub enum FatError
 {
     FsIsNotFat32,
+    BadLinking,
+    NoClusterAvailable,
 }
 
 pub fn read_bpb_info(card: SdCard, fat_part_block: usize) 

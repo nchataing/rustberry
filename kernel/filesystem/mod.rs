@@ -3,5 +3,5 @@ pub mod fs;
 pub mod table;
 pub mod io;
 pub mod file;
-pub mod dir;
+pub mod dir_entry;
 

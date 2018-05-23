@@ -27,8 +27,8 @@ mod scheduler;
 
 use drivers::*;
 
-use alloc::boxed::Box;
-use alloc::borrow::ToOwned;
+// use alloc::boxed::Box;
+// use alloc::borrow::ToOwned;
 
 use memory::kernel_alloc::GlobalKernelAllocator;
 #[global_allocator]
@@ -43,7 +43,7 @@ pub extern fn init_memory_map()
 }
 
 #[no_mangle]
-pub extern fn kernel_main() -> !
+pub extern fn kernel_main() -> ()
 {
     uart::init();
     println!("\x1b[32;1mHello world !\x1b[0m");
@@ -138,7 +138,7 @@ pub extern fn kernel_main() -> !
         Some(rand) => println!("Random -> {:#08x}", rand),
         None => warn!("Random engine timeout")
     }
-
+/*
     scheduler::init();
     match process::Process::new("init".to_owned(),
         include_bytes!("../target/pi2/release/prgm/syscall_loop"))
@@ -154,4 +154,5 @@ pub extern fn kernel_main() -> !
     }
 
     scheduler::start();
+*/
 }
