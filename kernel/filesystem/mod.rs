@@ -3,10 +3,10 @@ use alloc::boxed::Box;
 use io;
 use io::{Read, Write, Seek};
 
-trait File : Read + Write + Seek { }
+pub trait File : Read + Write + Seek { }
 impl<T: Read + Write + Seek> File for T { }
 
-enum FileType
+pub enum FileType
 {
     File,
     Directory,
@@ -15,14 +15,14 @@ enum FileType
     BlockDevice
 }
 
-struct DirEntry
+pub struct DirEntry
 {
-    name: String,
-    typ: FileType,
-    size: usize,
+    pub name: String,
+    pub typ: FileType,
+    pub size: usize,
 }
 
-trait Dir
+pub trait Dir
 {
     fn list_entries(&self) -> Vec<DirEntry>;
 
@@ -32,7 +32,9 @@ trait Dir
     fn add_subdir(&mut self, name: &str) -> io::Result<()>;
     fn delete_child(&mut self, name: &str) -> io::Result<()>;
 
-    fn open_file(&self, path: &str) -> io::Result<Box<File>> where Self: Sized
+    fn box_clone(&self) -> Box<Dir>;
+
+    fn open_file(&self, path: &str) -> io::Result<Box<File>>
     {
         let path : Vec<&str> = path.rsplitn(2, '/').collect();
         if path.len() == 1
@@ -46,7 +48,7 @@ trait Dir
         }
     }
 
-    fn open_dir(&self, path: &str) -> io::Result<Box<Dir>> where Self: Sized
+    fn open_dir(&self, path: &str) -> io::Result<Box<Dir>>
     {
         let mut current_dir : Option<Box<Dir>> = None;
         for subdir in path.split('/')
@@ -70,7 +72,7 @@ trait Dir
                                       error: "invalid path in open_dir" })
     }
 
-    fn create_file(&mut self, path: &str) -> io::Result<()> where Self: Sized
+    fn create_file(&mut self, path: &str) -> io::Result<()>
     {
         let path : Vec<&str> = path.rsplitn(2, '/').collect();
         if path.len() == 1
@@ -84,7 +86,7 @@ trait Dir
         }
     }
 
-    fn create_dir(&mut self, path: &str) -> io::Result<()> where Self: Sized
+    fn create_dir(&mut self, path: &str) -> io::Result<()>
     {
         let path : Vec<&str> = path.rsplitn(2, '/').collect();
         if path.len() == 1
@@ -98,7 +100,7 @@ trait Dir
         }
     }
 
-    fn delete(&mut self, path: &str) -> io::Result<()> where Self: Sized
+    fn delete(&mut self, path: &str) -> io::Result<()>
     {
         let path : Vec<&str> = path.rsplitn(2, '/').collect();
         if path.len() == 1
@@ -113,4 +115,13 @@ trait Dir
     }
 }
 
+impl Clone for Box<Dir>
+{
+    fn clone(&self) -> Self
+    {
+        self.box_clone()
+    }
+}
+
 pub mod mbr_reader;
+pub mod virtualfs;
