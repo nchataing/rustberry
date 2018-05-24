@@ -3,12 +3,14 @@ use io;
 use alloc::{Vec, BTreeMap};
 use alloc::string::{String, ToString};
 use alloc::boxed::Box;
+use alloc::rc::Rc;
+use core::cell::RefCell;
 
 #[derive(Clone)]
 pub struct VirtualDir
 {
     filesystem: Option<Box<Dir>>,
-    children: BTreeMap<String, VirtualDir>,
+    children: BTreeMap<String, Rc<RefCell<VirtualDir>>>,
 }
 
 impl VirtualDir
@@ -40,8 +42,8 @@ impl VirtualDir
             else
             {
                 let sub_fs = self.children.entry(path[0].to_string())
-                                          .or_insert(VirtualDir::new());
-                sub_fs.mount(fs, path[1]);
+                    .or_insert(Rc::new(RefCell::new(VirtualDir::new())));
+                sub_fs.borrow_mut().mount(fs, path[1]);
             }
         }
     }
@@ -68,7 +70,7 @@ impl VirtualDir
         }
         else
         {
-            let sub_fs = self.children.get(path[0])?;
+            let sub_fs = self.children.get(path[0])?.borrow();
             sub_fs.real_path(path[1])
                   .or(self.filesystem.as_ref().map(|x| (x.box_clone(), path[1])))
         }
@@ -104,7 +106,7 @@ impl Dir for VirtualDir
     {
         match self.children.get(name)
         {
-            Some(vsubdir) => Ok(Box::new(vsubdir.clone())),
+            Some(vsubdir) => Ok(Box::new(vsubdir.borrow().clone())),
             None => match self.filesystem
             {
                 Some(ref mut fs) => fs.get_subdir(name),
