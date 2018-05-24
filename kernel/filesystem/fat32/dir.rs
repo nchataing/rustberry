@@ -21,7 +21,6 @@ impl<'a> DirTrait for Dir<'a>
         let mut pos = 0;
         while !done
         {
-            print!("foo");
             let dir_entry = FatDirEntry::dump(&mut self.file, pos);
             if dir_entry.name[0] == 0 {
                 done = true
@@ -32,7 +31,6 @@ impl<'a> DirTrait for Dir<'a>
                 // entries.push(dir_entry.to_vfs_dir_entry());
                 pos = dir_entry.pos + 32;
             }
-            print!("bar\n");
         }
         entries
     }

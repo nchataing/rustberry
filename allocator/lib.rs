@@ -2,6 +2,7 @@
 #![feature(const_fn, allocator_api)]
 
 use core::ptr::NonNull;
+use core::cmp::max;
 use core::alloc::{Alloc, Layout, Opaque, AllocErr};
 
 const PAGE_SIZE : usize = 0x1000;
@@ -293,7 +294,7 @@ unsafe impl<PageAllocator: HeapPageAlloc> Alloc for Allocator<PageAllocator>
             let aligned_addr = align_addr(cur_header.offset(1) as usize, layout);
             let padding_size = (aligned_addr - cur_header as usize + 3) / 4 - 1;
             // Size in word which is to be allocated
-            let size = (layout.size() + 3) / 4;
+            let size = max((layout.size() + 3) / 4, 2);
 
             if size + padding_size <= (*cur_header).get_size()
             {

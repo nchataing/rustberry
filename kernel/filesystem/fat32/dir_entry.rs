@@ -53,7 +53,8 @@ impl DirEntry
         while ext_descr
         {
             file.read_exact(&mut buf).unwrap();
-            if buf[11] == LND {
+            if buf[11] == LND
+            {
                 let mut utf16_buf : [u16; 13] = [0; 13];
                 utf16_buf[0] = read_u16(&buf, 1);
                 utf16_buf[1] = read_u16(&buf, 3);
@@ -68,10 +69,12 @@ impl DirEntry
                 utf16_buf[10] = read_u16(&buf, 24);
                 utf16_buf[11] = read_u16(&buf, 28);
                 utf16_buf[12] = read_u16(&buf, 30);
-                long_name.insert_str(0, &String::from_utf16(&utf16_buf).unwrap());
+                let long_name_part = String::from_utf16(&utf16_buf).unwrap();
+                long_name.insert_str(0, &long_name_part);
                 descr_pos += 32;
             }
-            else {
+            else
+            {
                 ext_descr = false
             }
         }
