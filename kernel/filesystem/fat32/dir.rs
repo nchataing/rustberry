@@ -17,17 +17,22 @@ impl<'a> DirTrait for Dir<'a>
     {
         let mut done = false;
         let mut entries = Vec::new();
+        entries.reserve(42);
         let mut pos = 0;
         while !done
         {
+            print!("foo");
             let dir_entry = FatDirEntry::dump(&mut self.file, pos);
             if dir_entry.name[0] == 0 {
                 done = true
             }
             else {
-                entries.push(dir_entry.to_vfs_dir_entry());
+                let entry = dir_entry.to_vfs_dir_entry();
+                entry.print();
+                // entries.push(dir_entry.to_vfs_dir_entry());
                 pos = dir_entry.pos + 32;
             }
+            print!("bar\n");
         }
         entries
     }

@@ -7,7 +7,6 @@ pub struct BiosParameterBlock {
     pub sectors_per_cluster: u8,
     pub reserved_sectors: u16,
     pub fats: u8,
-    sector_per_cluster: usize,
     root_entries: u16,
     // = 0 if there are more than 65535 sectors
     total_sector_16: u16,

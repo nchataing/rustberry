@@ -20,7 +20,7 @@ impl <'a> File <'a>
         File
         {
             fst_cluster,
-            cur_cluster: fst_cluster,
+            cur_cluster: None,
             offset: 0,
             entry: None,
             fs: fat,
@@ -68,13 +68,14 @@ impl <'a> Read for File<'a>
     fn read(&mut self, buf: &mut [u8]) -> Result<usize>
     {
         let cluster_size = self.fs.cluster_size;
-        let cur_cluster = match self.cur_cluster {
-            // End of chain is reached
-            None => return Ok(0),
-            Some(n) => {
-                if self.offset % cluster_size == 0 
-                {   
-                    // Get next cluster
+        let cur_cluster = if self.offset == 0 {
+            self.fst_cluster
+        }
+        else if self.offset % cluster_size == 0 { 
+            // Get next cluster
+            match self.cur_cluster {
+                None => self.fst_cluster,
+                Some(n) => {
                     match self.fs.get_entry(n).unwrap()
                     {
                         Entry::Free | Entry::Bad => {
@@ -86,15 +87,20 @@ impl <'a> Read for File<'a>
                             return Err(error)
                         },
                         Entry::EndOfChain => return Ok(0),
-                        Entry::Full(m) => m
+                        Entry::Full(m) => Some(m)
                     }
                 }
-                else {
-                    n
-                }
             }
+        }
+        else {
+            self.cur_cluster
         };
         
+        let cur_cluster = match cur_cluster {
+            None => return Ok(0),
+            Some(n) => n
+        };
+
         let offset_in_cluster = self.offset % cluster_size;
         let bytes_left_in_cluster = cluster_size - offset_in_cluster;
         let bytes_left_in_file = self.bytes_left_in_file()
@@ -110,8 +116,12 @@ impl <'a> Read for File<'a>
         
         let mut cluster_buf = vec![0; cluster_size];
         self.fs.read_cluster(&mut cluster_buf, cur_cluster);
-        buf.clone_from_slice(
+        buf[0..read_size].clone_from_slice(
             &cluster_buf[offset_in_cluster .. offset_in_cluster + read_size]);
+        // Update file info
+        self.offset += read_size;
+        self.cur_cluster = Some(cur_cluster);
+
         Ok(read_size)
     }
 }
