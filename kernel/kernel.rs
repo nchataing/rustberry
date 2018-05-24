@@ -30,9 +30,9 @@ mod timer;
 
 use drivers::*;
 
-use alloc::boxed::Box;
+// use alloc::boxed::Box;
 use alloc::rc::Rc;
-use alloc::borrow::ToOwned;
+// use alloc::borrow::ToOwned;
 
 use memory::kernel_alloc::GlobalKernelAllocator;
 
@@ -86,9 +86,8 @@ pub extern fn kernel_main() -> ()
             {
                 Ok(fs) =>
                 {
-                    let mut root_dir = fs.root_dir();
-                    let root_entries = root_dir.list_entries();
-                    for e in &root_entries
+                    let mut root = fs.root_dir();
+                    for e in root.list_entries()
                     {
                         e.print()
                     }
@@ -99,7 +98,9 @@ pub extern fn kernel_main() -> ()
         Err(err) => warn!("SD card failure: {:?}", err)
     }
 
-    /*unsafe
+    
+    /*
+    unsafe
     {
         // Each of the following operations must fail !
         mmio::write(0 as *mut u32, 0); // Data abort
@@ -141,7 +142,7 @@ pub extern fn kernel_main() -> ()
         Some(rand) => println!("Random -> {:#08x}", rand),
         None => warn!("Random engine timeout")
     }
-
+    
     scheduler::init();
     /*match process::Process::new("init".to_owned(),
         include_bytes!("../target/pi2/release/prgm/syscall_loop"))

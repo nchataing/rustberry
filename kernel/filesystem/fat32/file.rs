@@ -30,6 +30,18 @@ impl File
         }
     }
 
+    pub fn new_from_entry(fat: Rc<Fat>, entry: DirEntry) -> Self
+    {
+        File
+        {
+            fst_cluster: Some(entry.fst_cluster()),
+            cur_cluster: None,
+            offset: 0,
+            entry: Some(Rc::new(RefCell::new(entry))),
+            fs: fat
+        }
+    }
+
     pub fn get_size(&self) -> Option<usize>
     {
         match self.entry
@@ -62,8 +74,6 @@ impl File
             Some(ref ent) => Some(ent.borrow().size() as usize - self.offset)
         }
     }
-
-
 }
 
 impl Read for File
@@ -100,6 +110,7 @@ impl Read for File
         };
 
         let cur_cluster = match cur_cluster {
+            // EOF is reached
             None => return Ok(0),
             Some(n) => n
         };
@@ -114,6 +125,7 @@ impl Read for File
             bytes_left_in_file);
         if read_size == 0
         {
+            // EOF is reached
             return Ok(0)
         }
 
@@ -270,7 +282,14 @@ impl Seek for File
         {
             self.cur_cluster = match self.cur_cluster
             {
-                None => panic!("Seeking in invalid cluster"),
+                None => {
+                    let error = Error
+                    {
+                        kind: ErrorKind::InvalidData,
+                        error: "End of cluster chain reached"
+                    };
+                    return Err(error)
+                },
                 Some(n) => match self.fs.get_entry(n).unwrap()
                 {
                     Entry::Free | Entry::Bad => {
