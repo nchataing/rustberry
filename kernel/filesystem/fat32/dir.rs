@@ -1,9 +1,9 @@
 use filesystem::fat32::file::File as FatFile;
 use filesystem::Dir as DirTrait;
-use filesystem::DirEntry;
-use filesystem::fat32::dir_entry::DirEntry as FatDirEntry;
+use filesystem::{DirEntry};
+use filesystem::fat32::dir_entry::{DirEntry as FatDirEntry, Typ};
 use io;
-use alloc::{Vec, boxed::Box};
+use alloc::{Vec, boxed::Box, string::ToString};
 use filesystem::File;
 
 #[derive(Clone)]
@@ -18,19 +18,16 @@ impl DirTrait for Dir
     {
         let mut done = false;
         let mut entries = Vec::new();
-        entries.reserve(42);
         let mut pos = 0;
         while !done
         {
-            let dir_entry = FatDirEntry::dump(&mut self.file, pos);
-            if dir_entry.name[0] == 0 {
-                done = true
-            }
-            else {
-                let entry = dir_entry.to_vfs_dir_entry();
-                entry.print();
-                // entries.push(dir_entry.to_vfs_dir_entry());
-                pos = dir_entry.pos + 32;
+            match FatDirEntry::dump(&mut self.file, pos) {
+                Typ::Some(dir_entry) => {
+                    entries.push(dir_entry.to_vfs_dir_entry());
+                    pos = dir_entry.pos + 32;
+                },
+                Typ::Unused => pos += 32,
+                Typ::None => done = true 
             }
         }
         entries
@@ -39,6 +36,29 @@ impl DirTrait for Dir
     fn get_file(&mut self, _name: &str) -> io::Result<Box<File>>
     {
         unimplemented!()
+        /*let mut pos = 0;
+        loop {
+            if let Some(dir_entry) = FatDirEntry::dump(&mut self.file, pos)
+            {
+                if dir_entry.name[0] == 0 {
+                    return Err(io::Error { 
+                        kind : io::ErrorKind::NotFound, 
+                        error : "File not found"
+                    })
+                }
+                else if dir_entry.get_name() == name.to_string() {
+                    return Ok(Box::new(
+                            FatFile::new_from_entry(&self.file.fs, &dir_entry)))
+                }
+            }
+            else {
+                return Err(io::Error {
+                    kind: io::ErrorKind::NotFound,
+                    error: "File not found"
+                    })
+            }
+        }*/
+        panic!("")
     }
     fn get_subdir(&mut self, _name: &str) -> io::Result<Box<DirTrait>>
     {

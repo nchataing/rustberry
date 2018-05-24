@@ -16,7 +16,7 @@ const ARCHIVE   : u8 = 0x20;
 // long name descriptor
 const LND       : u8 = READ_ONLY | HIDDEN | SYSTEM | VOLUME_ID;
 
-#[derive(Default, Debug)]
+#[derive(Default, Debug, Clone)]
 pub struct DirEntry {
     // General information
     pub name: [u8; 11],
@@ -41,18 +41,40 @@ pub struct DirEntry {
     long_descr_pos: usize,
 }
 
+pub enum Typ
+{
+    Some(DirEntry),
+    Unused,
+    None,
+}
+
 impl DirEntry
 {
-    pub fn dump(file: &mut File, pos : usize) -> Self
+    pub fn dump(file: &mut File, pos : usize) -> Typ
     {
         let mut buf = [0; 32];
         let mut ext_descr = true;
-        file.seek(SeekFrom::Start(pos as u64)).unwrap();
+        match file.seek(SeekFrom::Start(pos as u64))
+        {
+            Ok(_) => (),
+            Err(e) => return Typ::None
+        }
+        file.read_exact(&mut buf).unwrap();
+        
+        if (buf[0] == 0x0)
+        {
+            return Typ::None
+        }
+        if (buf[0] == 0xE5)
+        {
+            return Typ::Unused
+        }
+        
         let mut long_name: String = "".to_string();
         let mut descr_pos = pos;
+
         while ext_descr
         {
-            file.read_exact(&mut buf).unwrap();
             if buf[11] == LND
             {
                 let mut utf16_buf : [u16; 13] = [0; 13];
@@ -72,6 +94,7 @@ impl DirEntry
                 let long_name_part = String::from_utf16(&utf16_buf).unwrap();
                 long_name.insert_str(0, &long_name_part);
                 descr_pos += 32;
+                file.read_exact(&mut buf).unwrap();
             }
             else
             {
@@ -108,7 +131,7 @@ impl DirEntry
             entry.long_descr_pos = pos;
         }
 
-        entry
+        Typ::Some(entry)
     }
 
     pub fn is_dir(&self) -> bool
@@ -158,5 +181,11 @@ impl DirEntry
             else { FileType::File };
         let size = self.size as usize;
         VfsDirEntry { name, typ, size }
+    }
+
+    pub fn get_name(&self) -> String
+    {
+        if let Some(ref name) = self.long_name { name.clone() } 
+        else { String::from_utf8(self.name.to_vec()).unwrap() }
     }
 }

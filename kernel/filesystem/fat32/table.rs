@@ -5,6 +5,7 @@ use filesystem::buffer_io::*;
 use filesystem::fat32::{file::File, dir::Dir};
 use alloc::rc::Rc;
 
+#[derive(Debug)]
 pub enum Entry
 {
     Free,
@@ -49,7 +50,7 @@ impl Fat
             card,
             fat_size: bpb.sectors_per_fat_32 as usize,
             sectors_per_cluster,
-            root_fst_cluster: 0,
+            root_fst_cluster: bpb.root_fst_cluster,
             cluster_size
         })
     }
@@ -159,15 +160,15 @@ impl Fat
 
     pub fn read_cluster(&self, buf: &mut [u8], cluster: u32)
     {
-        let sector = self.fst_data_sector +
-            (cluster as usize) * self.sectors_per_cluster;
-        self.card.read(buf, sector).unwrap()
+        let sector = self.fst_data_sector + 
+            (cluster as usize - 2) * self.sectors_per_cluster;
+        self.card.read(buf, sector).unwrap() 
     }
 
     pub fn write_cluster(&self, buf: &mut [u8], cluster: u32)
     {
-        let sector = self.fst_data_sector +
-            (cluster as usize) * self.sectors_per_cluster;
+        let sector = self.fst_data_sector + 
+            (cluster as usize - 2) * self.sectors_per_cluster;
         self.card.write(buf, sector).unwrap()
     }
 
