@@ -1,3 +1,5 @@
+use io::SeekFrom;
+
 #[inline]
 pub fn reschedule()
 {
@@ -7,29 +9,62 @@ pub fn reschedule()
     }
 }
 
-/*#[inline]
-pub fn read()
+#[derive(Clone, Copy)]
+pub(crate) struct FileDescriptor(usize);
+
+#[inline]
+pub(crate) fn read(file: FileDescriptor, buf: &mut [u8]) -> usize
 {
-    unimplemented!() // svc 1
+    let read_bytes;
+    unsafe
+    {
+        asm!("svc 1" : "={r0}"(read_bytes) : "{r0}"(file.0),
+                       "{r1}"(buf.as_ptr()), "{r2}"(buf.len()));
+    }
+    read_bytes
 }
 
 #[inline]
-pub fn write()
+pub(crate) fn write(file: FileDescriptor, buf: &[u8]) -> usize
 {
-    unimplemented!() // svc 2
+    let written_bytes;
+    unsafe
+    {
+        asm!("svc 2" : "={r0}"(written_bytes) : "{r0}"(file.0),
+                       "{r1}"(buf.as_ptr()), "{r2}"(buf.len()));
+    }
+    written_bytes
+}
+
+pub enum OpenFlags
+{
+    Read = 0x1,
+    Write = 0x2,
+    Create = 0x4,
+    Append = 0x8,
+    Truncate = 0x10,
 }
 
 #[inline]
-pub fn open()
+pub(crate) fn open(path: &str, flags: OpenFlags) -> FileDescriptor
 {
-    unimplemented!() // svc 3
+    let fdesc;
+    unsafe
+    {
+        asm!("svc 3" : "={r0}"(fdesc) : "{r0}"(path.as_ptr()),
+                       "{r1}"(path.len()), "{r2}"(flags as u32) :: "volatile");
+    }
+    FileDescriptor(fdesc)
 }
 
 #[inline]
-pub fn close()
+pub(crate) fn close(file: FileDescriptor)
 {
-    unimplemented!() // svc 4
-}*/
+    unsafe
+    {
+        asm!("svc 4" :: "{r0}"(file.0) :: "volatile");
+    }
+}
 
 #[inline]
 pub fn exit(exit_code: u32) -> !
@@ -53,7 +88,7 @@ pub fn kill(pid: usize) -> bool
 }
 
 #[inline]
-pub unsafe fn reserve_heap_pages(nb: isize) -> usize
+pub(crate) unsafe fn reserve_heap_pages(nb: isize) -> usize
 {
     let first_allocated;
     asm!("svc 7" : "={r0}"(first_allocated) : "{r0}"(nb) :: "volatile");
@@ -88,13 +123,46 @@ pub fn wait_children() -> ChildEvent
     ChildEvent { pid, exit_code }
 }
 
-/*#[inline]
-pub fn new_pipe()
+#[inline]
+pub(crate) fn seek(fdesc: FileDescriptor, seek_pos: SeekFrom) -> u64
 {
-    unimplemented!() // svc 10
+    let seek_origin;
+    let seek_low;
+    let seek_high;
+    match seek_pos
+    {
+        SeekFrom::Start(off) =>
+        {
+            seek_origin = 0;
+            seek_low = off as u32;
+            seek_high = (off >> 32) as u32;
+        }
+        SeekFrom::End(off) =>
+        {
+            seek_origin = 1;
+            seek_low = off as u32;
+            seek_high = (off as u64 >> 32) as u32;
+        }
+        SeekFrom::Current(off) =>
+        {
+            seek_origin = 2;
+            seek_low = off as u32;
+            seek_high = (off as u64 >> 32) as u32;
+        }
+    }
+
+    let offset_high : u32;
+    let offset_low : u32;
+    unsafe
+    {
+        asm!("svc 10" : "={r0}"(offset_high), "={r1}"(offset_low) :
+                        "{r0}"(fdesc.0), "{r1}"(seek_origin),
+                        "{r2}"(seek_high), "{r3}"(seek_low) :: "volatile");
+    }
+    (offset_high as u64) << 32 | offset_low as u64
 }
 
-#[inline]
+/*#[inline]
 pub fn spawn()
 {
     unimplemented!() // svc 11

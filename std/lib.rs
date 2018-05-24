@@ -5,8 +5,10 @@
 extern crate alloc;
 extern crate rlibc;
 
+extern crate rustberry_io as io;
 extern crate rustberry_allocator as allocator;
 
+pub mod fs;
 pub mod syscall;
 mod application_alloc;
 

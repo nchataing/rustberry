@@ -5,6 +5,9 @@ use system_control;
 use plain;
 use goblin::elf32;
 use drivers::mmio;
+use sparse_vec::SparseVec;
+use filesystem::File;
+use alloc::boxed::Box;
 
 #[derive(Debug, Clone)]
 #[repr(C)]
@@ -66,6 +69,7 @@ pub struct Process
     pub child_events: Vec<ChildEvent>,
     pub name: String,
     pub memory_map: memory::application_map::ApplicationMap,
+    pub file_descriptors: SparseVec<Box<File>>,
 }
 
 #[derive(Debug)]
@@ -108,7 +112,8 @@ impl Process
         let mut process = Process { regs: RegisterContext::new(),
             state: ProcessState::Runnable, name, pid: 0, parent_pid: 0,
             children_pid: vec![], child_events: vec![],
-            memory_map: memory::application_map::ApplicationMap::new()};
+            memory_map: memory::application_map::ApplicationMap::new(),
+            file_descriptors: SparseVec::new()};
 
         process.load_elf(elf_file)?;
         Ok(process)

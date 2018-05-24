@@ -40,18 +40,17 @@ pub unsafe extern fn software_interrupt_handler(reg_ctx: &mut RegisterContext)
     match syscall_id
     {
         0 => scheduler::plan_scheduling(),
-        /*1 => syscall::read(reg_ctx),
+        1 => syscall::read(reg_ctx),
         2 => syscall::write(reg_ctx),
-        3 => syscall::open(reg_ctx),
+        /*3 => syscall::open(reg_ctx),
         4 => syscall::close(reg_ctx),*/
         5 => syscall::exit(reg_ctx.r0),
         6 => syscall::kill(reg_ctx),
         7 => syscall::reserve_heap_pages(reg_ctx),
         8 => syscall::sleep(reg_ctx),
         9 => syscall::wait_children(reg_ctx),
-        /*10 => syscall::spawn(reg_ctx),
-        11 => syscall::seek(reg_ctx),
-        12 => syscall::redirect(reg_ctx),*/
+        10 => syscall::seek(reg_ctx),
+        /*11 => syscall::spawn(reg_ctx),*/
         _ => warn!("Invalid syscall {}", syscall_id),
     }
 

@@ -1,18 +1,80 @@
+use core::slice;
 use process::{RegisterContext, ProcessState, ChildEvent};
 use scheduler;
 use timer;
+use io::SeekFrom;
 
-/*pub fn read(reg_ctx: &mut RegisterContext)
+pub fn read(reg_ctx: &mut RegisterContext)
 {
-    unimplemented!()
+    if let Some(process) = scheduler::current_process()
+    {
+        // Prevent write inside kernel space
+        if reg_ctx.r1 < 0x8000_0000 || reg_ctx.r2 >= 0x8000_0000 ||
+           reg_ctx.r1.overflowing_add(reg_ctx.r2).1
+        {
+            reg_ctx.r0 = 0;
+            return;
+        }
+
+        let buf = unsafe { slice::from_raw_parts_mut(reg_ctx.r1 as *mut u8,
+                                                     reg_ctx.r2 as usize) };
+
+        match process.file_descriptors.get_mut(reg_ctx.r0 as usize)
+        {
+            Some(ref mut file) =>
+            {
+                match file.read(buf)
+                {
+                    Ok(bytes_read) => reg_ctx.r0 = bytes_read as u32,
+                    Err(err) =>
+                    {
+                        warn!("{}: error reading file {}: {:?}",
+                            process.name, reg_ctx.r0, err);
+                        reg_ctx.r0 = 0;
+                    }
+                }
+            }
+            None => reg_ctx.r0 = 0,
+        }
+    }
 }
 
 pub fn write(reg_ctx: &mut RegisterContext)
 {
-    unimplemented!()
+    if let Some(process) = scheduler::current_process()
+    {
+        // Prevent read from kernel space
+        if reg_ctx.r1 < 0x8000_0000 || reg_ctx.r2 >= 0x8000_0000 ||
+           reg_ctx.r1.overflowing_add(reg_ctx.r2).1
+        {
+            reg_ctx.r0 = 0;
+            return;
+        }
+
+        let buf = unsafe { slice::from_raw_parts(reg_ctx.r1 as *mut u8,
+                                                 reg_ctx.r2 as usize) };
+
+        match process.file_descriptors.get_mut(reg_ctx.r0 as usize)
+        {
+            Some(ref mut file) =>
+            {
+                match file.write(buf)
+                {
+                    Ok(written_bytes) => reg_ctx.r0 = written_bytes as u32,
+                    Err(err) =>
+                    {
+                        warn!("{}: error writing file {}: {:?}",
+                            process.name, reg_ctx.r0, err);
+                        reg_ctx.r0 = 0;
+                    }
+                }
+            }
+            None => reg_ctx.r0 = 0,
+        }
+    }
 }
 
-pub fn open(reg_ctx: &mut RegisterContext)
+/*pub fn open(reg_ctx: &mut RegisterContext)
 {
     unimplemented!()
 }
@@ -113,12 +175,54 @@ pub fn wait_children(reg_ctx: &mut RegisterContext)
     }
 }
 
-/*pub fn new_pipe(reg_ctx: &mut RegisterContext)
+pub fn seek(reg_ctx: &mut RegisterContext)
 {
-    unimplemented!()
+    if let Some(process) = scheduler::current_process()
+    {
+        let seek_from;
+        match reg_ctx.r1
+        {
+            0 => seek_from = SeekFrom::Start((reg_ctx.r2 as u64) << 32 | reg_ctx.r3 as u64),
+            1 => seek_from = SeekFrom::End(((reg_ctx.r2 as u64) << 32 | reg_ctx.r3 as u64) as i64),
+            2 => seek_from = SeekFrom::Current(((reg_ctx.r2 as u64) << 32 | reg_ctx.r3 as u64) as i64),
+            _ =>
+            {
+                error!("{}: Invalid seek operation", process.name);
+                exit(105);
+                return;
+            }
+        }
+
+        match process.file_descriptors.get_mut(reg_ctx.r0 as usize)
+        {
+            Some(ref mut file) =>
+            {
+                match file.seek(seek_from)
+                {
+                    Ok(offset) =>
+                    {
+                        reg_ctx.r0 = (offset >> 32) as u32;
+                        reg_ctx.r1 = offset as u32;
+                    }
+                    Err(err) =>
+                    {
+                        warn!("{}: error seeking file {}: {:?}",
+                            process.name, reg_ctx.r0, err);
+                        reg_ctx.r0 = 0;
+                        reg_ctx.r1 = 0;
+                    }
+                }
+            }
+            None =>
+            {
+                reg_ctx.r0 = 0;
+                reg_ctx.r1 = 0;
+            }
+        }
+    }
 }
 
-pub fn spawn(reg_ctx: &mut RegisterContext)
+/*pub fn spawn(reg_ctx: &mut RegisterContext)
 {
     unimplemented!()
 }*/
