@@ -1,5 +1,5 @@
 use syscall;
-use syscall::OpenFlags;
+//use syscall::OpenFlags;
 use io;
 use io::{Read, Write, Seek, SeekFrom};
 
@@ -10,10 +10,14 @@ pub struct File
 
 impl File
 {
-    pub fn open(path: &str, flags: OpenFlags) -> io::Result<File>
+    pub fn open(path: &str/*, flags: OpenFlags*/) -> io::Result<File>
     {
-        // TODO: Handle errors
-        Ok(File { descr: syscall::open(path, flags) })
+        // TODO: Better errors
+        let descr = syscall::open(path)
+            .ok_or(io::Error { kind: io::ErrorKind::NotFound,
+                               error: "could not open file" })?;
+
+        Ok(File { descr })
     }
 }
 

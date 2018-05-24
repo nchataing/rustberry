@@ -42,8 +42,8 @@ pub unsafe extern fn software_interrupt_handler(reg_ctx: &mut RegisterContext)
         0 => scheduler::plan_scheduling(),
         1 => syscall::read(reg_ctx),
         2 => syscall::write(reg_ctx),
-        /*3 => syscall::open(reg_ctx),
-        4 => syscall::close(reg_ctx),*/
+        3 => syscall::open(reg_ctx),
+        4 => syscall::close(reg_ctx),
         5 => syscall::exit(reg_ctx.r0),
         6 => syscall::kill(reg_ctx),
         7 => syscall::reserve_heap_pages(reg_ctx),

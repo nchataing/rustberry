@@ -36,25 +36,26 @@ pub(crate) fn write(file: FileDescriptor, buf: &[u8]) -> usize
     written_bytes
 }
 
-pub enum OpenFlags
+/*pub enum OpenFlags
 {
     Read = 0x1,
     Write = 0x2,
     Create = 0x4,
     Append = 0x8,
     Truncate = 0x10,
-}
+}*/
 
 #[inline]
-pub(crate) fn open(path: &str, flags: OpenFlags) -> FileDescriptor
+pub(crate) fn open(path: &str/*, flags: OpenFlags*/) -> Option<FileDescriptor>
 {
-    let fdesc;
+    let fdesc : i32;
     unsafe
     {
         asm!("svc 3" : "={r0}"(fdesc) : "{r0}"(path.as_ptr()),
-                       "{r1}"(path.len()), "{r2}"(flags as u32) :: "volatile");
+                       "{r1}"(path.len())/*, "{r2}"(flags as u32)*/ :: "volatile");
     }
-    FileDescriptor(fdesc)
+    if fdesc >= 0 { Some(FileDescriptor(fdesc as usize)) }
+    else { None }
 }
 
 #[inline]

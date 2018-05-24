@@ -30,9 +30,7 @@ mod timer;
 
 use drivers::*;
 
-use alloc::boxed::Box;
 use alloc::rc::Rc;
-use alloc::borrow::ToOwned;
 
 use memory::kernel_alloc::GlobalKernelAllocator;
 
@@ -65,6 +63,8 @@ pub extern fn kernel_main() -> ()
 
     interrupts::init();
     core_timer::init();
+
+    filesystem::virtualfs::init();
 
     match emmc::init()
     {

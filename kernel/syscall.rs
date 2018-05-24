@@ -1,8 +1,9 @@
-use core::slice;
+use core::{str,slice};
 use process::{RegisterContext, ProcessState, ChildEvent};
 use scheduler;
 use timer;
 use io::SeekFrom;
+use filesystem::{Dir, virtualfs};
 
 pub fn read(reg_ctx: &mut RegisterContext)
 {
@@ -74,15 +75,45 @@ pub fn write(reg_ctx: &mut RegisterContext)
     }
 }
 
-/*pub fn open(reg_ctx: &mut RegisterContext)
+pub fn open(reg_ctx: &mut RegisterContext)
 {
-    unimplemented!()
+    if let Some(process) = scheduler::current_process()
+    {
+        // Prevent read from kernel space
+        if reg_ctx.r0 < 0x8000_0000 || reg_ctx.r1 >= 0x8000_0000 ||
+           reg_ctx.r0.overflowing_add(reg_ctx.r1).1
+        {
+            reg_ctx.r0 = (-2i32) as u32;
+            return;
+        }
+
+        let path_bytes =  unsafe {
+            slice::from_raw_parts(reg_ctx.r0 as *const u8, reg_ctx.r1 as usize) };
+        let path = str::from_utf8(path_bytes).unwrap_or("");
+        match virtualfs::get_root().get_file(path)
+        {
+            Ok(file) =>
+            {
+                let descr = process.file_descriptors.insert(file);
+                reg_ctx.r0 = descr as u32;
+            }
+            Err(e) =>
+            {
+                warn!("{}: cannot open file {}: {:?}", process.name, path, e);
+                // TODO: Better error desambiguation
+                reg_ctx.r0 = (-1i32) as u32;
+            }
+        }
+    }
 }
 
 pub fn close(reg_ctx: &mut RegisterContext)
 {
-    unimplemented!()
-}*/
+    if let Some(process) = scheduler::current_process()
+    {
+        process.file_descriptors.remove(reg_ctx.r0 as usize);
+    }
+}
 
 pub fn exit(exit_code: u32)
 {

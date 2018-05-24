@@ -151,3 +151,15 @@ impl Dir for VirtualDir
         Box::new(self.clone())
     }
 }
+
+static mut VIRTUAL_ROOT : Option<VirtualDir> = None;
+
+pub fn init()
+{
+    unsafe { VIRTUAL_ROOT = Some(VirtualDir::new()) }
+}
+
+pub fn get_root() -> &'static mut VirtualDir
+{
+    unsafe { VIRTUAL_ROOT.as_mut().unwrap() }
+}
