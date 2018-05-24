@@ -77,12 +77,12 @@ impl VirtualDir
 
 impl Dir for VirtualDir
 {
-    fn list_entries(&self) -> Vec<DirEntry>
+    fn list_entries(&mut self) -> Vec<DirEntry>
     {
         let mut real_entries = match self.filesystem
         {
             None => Vec::new(),
-            Some(ref filesystem) => filesystem.list_entries(),
+            Some(ref mut filesystem) => filesystem.list_entries(),
         };
         let mut virtual_entries : Vec<_> = self.children.keys().map(|x| DirEntry
             { name: x.clone(), typ: FileType::Directory, size: 0 }).collect();
@@ -90,24 +90,24 @@ impl Dir for VirtualDir
         real_entries
     }
 
-    fn get_file(&self, name: &str) -> io::Result<Box<File>>
+    fn get_file(&mut self, name: &str) -> io::Result<Box<File>>
     {
         match self.filesystem
         {
             None => Err(io::Error { kind: io::ErrorKind::NotFound,
                                     error: "filesystem not found" } ),
-            Some(ref fs) => fs.get_file(name)
+            Some(ref mut fs) => fs.get_file(name)
         }
     }
 
-    fn get_subdir(&self, name: &str) -> io::Result<Box<Dir>>
+    fn get_subdir(&mut self, name: &str) -> io::Result<Box<Dir>>
     {
         match self.children.get(name)
         {
             Some(vsubdir) => Ok(Box::new(vsubdir.clone())),
             None => match self.filesystem
             {
-                Some(ref fs) => fs.get_subdir(name),
+                Some(ref mut fs) => fs.get_subdir(name),
                 None => Err(io::Error { kind: io::ErrorKind::NotFound,
                                         error: "filesystem not found" } ),
             }

@@ -35,7 +35,7 @@ impl DirEntry
     }
 }
 
-pub trait Dir
+pub trait Dir : 'static
 {
     fn list_entries(&mut self) -> Vec<DirEntry>;
 
@@ -44,6 +44,8 @@ pub trait Dir
     fn add_file(&mut self, name: &str) -> io::Result<()>;
     fn add_subdir(&mut self, name: &str) -> io::Result<()>;
     fn delete_child(&mut self, name: &str) -> io::Result<()>;
+
+    fn box_clone(&self) -> Box<Dir>;
 
     fn open_file(&mut self, path: &str) -> io::Result<Box<File>>
     {
@@ -126,7 +128,15 @@ pub trait Dir
     }
 }
 
+impl Clone for Box<Dir>
+{
+    fn clone(&self) -> Box<Dir>
+    {
+        self.box_clone()
+    }
+}
+
 pub mod mbr_reader;
-//pub mod virtualfs;
+pub mod virtualfs;
 pub mod buffer_io;
 pub mod fat32;

@@ -6,12 +6,13 @@ use io;
 use alloc::{Vec, boxed::Box};
 use filesystem::File;
 
-pub struct Dir<'a>
+#[derive(Clone)]
+pub struct Dir
 {
-    pub file: FatFile<'a>
+    pub file: FatFile
 }
 
-impl<'a> DirTrait for Dir<'a>
+impl DirTrait for Dir
 {
     fn list_entries(&mut self) -> Vec<DirEntry>
     {
@@ -53,7 +54,11 @@ impl<'a> DirTrait for Dir<'a>
     }
     fn delete_child(&mut self, name: &str) -> io::Result<()>
     {
-        panic!("") 
+        panic!("")
     }
 
+    fn box_clone(&self) -> Box<DirTrait>
+    {
+        Box::new(self.clone())
+    }
 }

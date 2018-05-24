@@ -2,20 +2,23 @@ use filesystem::fat32::table::{Fat, Entry};
 use filesystem::fat32::dir_entry::DirEntry;
 use core::cmp::min;
 use io::*;
+use alloc::rc::Rc;
+use core::cell::RefCell;
 
-pub struct File<'a>
+#[derive(Clone)]
+pub struct File
 {
     fst_cluster: Option<u32>,
     cur_cluster: Option<u32>,
     // Current position in file
     pub offset: usize,
-    entry: Option<DirEntry>,
-    fs: &'a Fat<'a>,
+    entry: Option<Rc<RefCell<DirEntry>>>,
+    fs: Rc<Fat>,
 }
 
-impl<'a> File<'a>
+impl File
 {
-    pub fn new(fat: &'a Fat<'a>, fst_cluster: Option<u32>) -> Self
+    pub fn new(fat: Rc<Fat>, fst_cluster: Option<u32>) -> Self
     {
         File
         {
@@ -32,7 +35,7 @@ impl<'a> File<'a>
         match self.entry
         {
             None => None,
-            Some(ref e) => Some(e.size())
+            Some(ref e) => Some(e.borrow().size())
         }
     }
 
@@ -44,9 +47,9 @@ impl<'a> File<'a>
     pub fn set_fst_cluster(&mut self, cluster: u32)
     {
         self.fst_cluster = Some(cluster);
-        match self.entry 
+        match self.entry
         {
-            Some(ref mut e) => e.set_fst_cluster(cluster),
+            Some(ref mut e) => e.borrow_mut().set_fst_cluster(cluster),
             None => {}
         }
     }
@@ -56,14 +59,14 @@ impl<'a> File<'a>
         match self.entry
         {
             None => None,
-            Some(ref ent) => Some(ent.size() as usize - self.offset)
+            Some(ref ent) => Some(ent.borrow().size() as usize - self.offset)
         }
     }
 
-    
+
 }
 
-impl <'a> Read for File<'a>
+impl Read for File
 {
     fn read(&mut self, buf: &mut [u8]) -> Result<usize>
     {
@@ -71,7 +74,7 @@ impl <'a> Read for File<'a>
         let cur_cluster = if self.offset == 0 {
             self.fst_cluster
         }
-        else if self.offset % cluster_size == 0 { 
+        else if self.offset % cluster_size == 0 {
             // Get next cluster
             match self.cur_cluster {
                 None => self.fst_cluster,
@@ -95,7 +98,7 @@ impl <'a> Read for File<'a>
         else {
             self.cur_cluster
         };
-        
+
         let cur_cluster = match cur_cluster {
             None => return Ok(0),
             Some(n) => n
@@ -106,14 +109,14 @@ impl <'a> Read for File<'a>
         let bytes_left_in_file = self.bytes_left_in_file()
             .unwrap_or(bytes_left_in_cluster);
         let read_size = min(
-            min(buf.len(), 
+            min(buf.len(),
                 bytes_left_in_cluster),
             bytes_left_in_file);
-        if read_size == 0 
+        if read_size == 0
         {
             return Ok(0)
         }
-        
+
         let mut cluster_buf = vec![0; cluster_size];
         self.fs.read_cluster(&mut cluster_buf, cur_cluster);
         buf[0..read_size].clone_from_slice(
@@ -126,7 +129,7 @@ impl <'a> Read for File<'a>
     }
 }
 
-impl <'a> Write for File<'a>
+impl Write for File
 {
     fn write(&mut self, buf: &[u8]) -> Result<usize>
     {
@@ -138,11 +141,11 @@ impl <'a> Write for File<'a>
         if write_size == 0 {
             return Ok(0)
         }
-        
+
         let cur_cluster = if offset == 0
         {
             // get next cluster
-            let next_cluster = match self.cur_cluster 
+            let next_cluster = match self.cur_cluster
             {
                 None => self.fst_cluster,
                 Some(n) => {
@@ -155,7 +158,7 @@ impl <'a> Write for File<'a>
                                 error: "Bad next cluster in file"
                             };
                             return Err(error)
-                        }, 
+                        },
                         Entry::EndOfChain => None,
                         Entry::Full(m) => Some(m)
                     }
@@ -166,7 +169,7 @@ impl <'a> Write for File<'a>
             {
                 Some(n) => n,
                 // A new cluster should be allocated
-                None => 
+                None =>
                 {
                     let new_cluster = self.fs.alloc_cluster(self.cur_cluster)
                                       .unwrap();
@@ -192,7 +195,7 @@ impl <'a> Write for File<'a>
         self.fs.read_cluster(&mut cluster_buf, cur_cluster);
         let write_slice = &mut cluster_buf[offset .. offset + write_size];
         write_slice.clone_from_slice(&buf[0 .. write_size]);
-        
+
         self.offset += write_size;
         self.cur_cluster = Some(cur_cluster);
         self.update_size();
@@ -205,7 +208,7 @@ impl <'a> Write for File<'a>
     }
 }
 
-impl <'a> Seek for File<'a>
+impl Seek for File
 {
     fn seek(&mut self, pos: SeekFrom) -> Result<u64>
     {
@@ -217,8 +220,8 @@ impl <'a> Seek for File<'a>
                 None => panic!("Unknown file size"),
                 Some(size) => {
                     let pos = size as i64 + neg_offset;
-                    if neg_offset >= 0 { 
-                        return Ok(size as u64) 
+                    if neg_offset >= 0 {
+                        return Ok(size as u64)
                     }
                     else if pos <= 0 {
                         let error = Error
@@ -232,11 +235,11 @@ impl <'a> Seek for File<'a>
                         (self.offset, pos as usize - self.offset)
                     }
                     else {
-                        (0, (size as i64 + neg_offset) as usize) 
+                        (0, (size as i64 + neg_offset) as usize)
                     }
                 }
             },
-            SeekFrom::Current(offset) => 
+            SeekFrom::Current(offset) =>
             {
                 if offset >= 0 {
                     (self.offset, offset as usize)
@@ -246,7 +249,7 @@ impl <'a> Seek for File<'a>
                     {
                         kind: ErrorKind::InvalidInput,
                         error: "Can't read before byte 0 of file"
-                    };    
+                    };
                     return Err(error)
                 }
                 else {
@@ -254,12 +257,12 @@ impl <'a> Seek for File<'a>
                 }
             },
         };
-        
+
         if cur_pos == 0 {
             self.cur_cluster = self.fst_cluster;
         }
         let cluster_size = self.fs.cluster_size;
-        let nb_cluster_to_pass = cur_pos / cluster_size 
+        let nb_cluster_to_pass = cur_pos / cluster_size
             - (cur_pos + offset) / cluster_size;
 
         // Get to good cluster
@@ -277,7 +280,7 @@ impl <'a> Seek for File<'a>
                             error: "Bad next cluster in file"
                         };
                         return Err(error)
-                    }, 
+                    },
                     Entry::EndOfChain => None,
                     Entry::Full(m) => Some(m)
                 }

@@ -31,11 +31,12 @@ mod timer;
 use drivers::*;
 
 use alloc::boxed::Box;
+use alloc::rc::Rc;
 use alloc::borrow::ToOwned;
 
 use memory::kernel_alloc::GlobalKernelAllocator;
 
-use filesystem::fat32::table::Fat; 
+use filesystem::fat32::table::Fat;
 use filesystem::Dir;
 
 #[global_allocator]
@@ -69,7 +70,7 @@ pub extern fn kernel_main() -> ()
     {
         Ok(sdcard) =>
         {
-            let parts; 
+            let parts;
 
             match filesystem::mbr_reader::read_partition_table(&sdcard)
             {
@@ -81,12 +82,14 @@ pub extern fn kernel_main() -> ()
                 }
             };
 
-            match Fat::new(&sdcard, parts[0].fst_sector as usize, 0)
+            match Fat::new(Rc::new(sdcard), parts[0].fst_sector as usize, 0)
             {
-                Ok(fs) => {
+                Ok(fs) =>
+                {
                     let mut root_dir = fs.root_dir();
                     let root_entries = root_dir.list_entries();
-                    for e in &root_entries {
+                    for e in &root_entries
+                    {
                         e.print()
                     }
                 },
@@ -95,7 +98,7 @@ pub extern fn kernel_main() -> ()
         },
         Err(err) => warn!("SD card failure: {:?}", err)
     }
-    
+
     /*unsafe
     {
         // Each of the following operations must fail !
@@ -140,7 +143,7 @@ pub extern fn kernel_main() -> ()
     }
 
     scheduler::init();
-    match process::Process::new("init".to_owned(),
+    /*match process::Process::new("init".to_owned(),
         include_bytes!("../target/pi2/release/prgm/syscall_loop"))
     {
         Ok(process) =>
@@ -164,7 +167,7 @@ pub extern fn kernel_main() -> ()
         {
             error!("Couldn't launch undefined process: {:?}", err);
         },
-    }
+    }*/
 
     scheduler::start();
 }

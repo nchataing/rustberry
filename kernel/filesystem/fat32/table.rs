@@ -3,6 +3,7 @@ use filesystem::fat32::bpb;
 use filesystem::fat32::bpb::FatError;
 use filesystem::buffer_io::*;
 use filesystem::fat32::{file::File, dir::Dir};
+use alloc::rc::Rc;
 
 pub enum Entry
 {
@@ -12,7 +13,7 @@ pub enum Entry
     EndOfChain,
 }
 
-pub struct Fat<'a>
+pub struct Fat
 {
     // fst sector of the FAT, regardless of the partition
     pub fst_sector: usize,
@@ -21,28 +22,28 @@ pub struct Fat<'a>
     pub sectors_per_cluster: usize,
     pub cluster_size: usize,
     pub root_fst_cluster: u32,
-    pub card: &'a SdCard,
+    pub card: Rc<SdCard>,
 }
 
-impl<'a> Fat<'a>
+impl Fat
 {
     // which indicates which FAT is being used.
-    pub fn new(card: &'a SdCard, fst_part_sector: usize, which: usize)
-        -> Result<Fat<'a>, FatError>
+    pub fn new(card: Rc<SdCard>, fst_part_sector: usize, which: usize)
+        -> Result<Fat, FatError>
     {
-        let bpb = match bpb::dump(card, fst_part_sector) {
+        let bpb = match bpb::dump(&*card, fst_part_sector) {
             Ok(bpb) => bpb,
             Err(err) => return Err(err)
         };
-        
+
         let fst_sector = fst_part_sector + bpb.reserved_sectors as usize
                         + which * (bpb.sectors_per_fat_32 as usize);
         let sectors_per_cluster = bpb.sectors_per_cluster as usize;
         let cluster_size = sectors_per_cluster * BLOCK_SIZE;
         let fst_data_sector = fst_part_sector+(bpb.reserved_sectors as usize) +
             (bpb.fats as usize) * (bpb.sectors_per_fat_32 as usize);
-        Ok(Fat 
-        { 
+        Ok(Fat
+        {
             fst_sector,
             fst_data_sector,
             card,
@@ -69,14 +70,14 @@ impl<'a> Fat<'a>
         }
     }
 
-    pub fn set_entry(&self, cluster: u32, entry: Entry) 
+    pub fn set_entry(&self, cluster: u32, entry: Entry)
     {
         let mut buf = [0;512];
         let fat_offset = cluster as usize * 4;
         let fat_sector = self.fst_sector + (fat_offset / BLOCK_SIZE);
         let entry_offset = fat_offset % BLOCK_SIZE;
         self.card.read(&mut buf, fat_sector).unwrap();
-        let coded_entry = match entry 
+        let coded_entry = match entry
         {
             Entry::Free => 0x0,
             Entry::Full(n) => n & 0x0FFF_FFFF,
@@ -93,11 +94,11 @@ impl<'a> Fat<'a>
         for sector in 0 .. self.fat_size
         {
             self.card.read(&mut buf, self.fst_sector + sector).unwrap();
-            for offset in 0 .. BLOCK_SIZE / 4 
+            for offset in 0 .. BLOCK_SIZE / 4
             {
                 if read_u32(&buf, offset) == 0
                 {
-                    let fat_offset = (sector - self.fst_sector) * BLOCK_SIZE 
+                    let fat_offset = (sector - self.fst_sector) * BLOCK_SIZE
                                     + offset;
                     return Some(fat_offset as u32 / 4)
                 }
@@ -106,7 +107,7 @@ impl<'a> Fat<'a>
         None
     }
 
-    pub fn alloc_cluster(&self, cluster_from: Option<u32>) 
+    pub fn alloc_cluster(&self, cluster_from: Option<u32>)
         -> Result<u32, FatError>
     {
         match self.next_free_cluster()
@@ -131,11 +132,11 @@ impl<'a> Fat<'a>
     {
         match self.get_entry(cluster_from).unwrap()
         {
-            Entry::Free | Entry::Full(_) | Entry::Bad 
+            Entry::Free | Entry::Full(_) | Entry::Bad
                 => Err(FatError::BadLinking),
             Entry::EndOfChain => match self.get_entry(cluster_to).unwrap()
             {
-                Entry::Full(_) | Entry::Bad | Entry::EndOfChain 
+                Entry::Full(_) | Entry::Bad | Entry::EndOfChain
                     => Err(FatError::BadLinking),
                 Entry::Free =>
                 {
@@ -147,10 +148,10 @@ impl<'a> Fat<'a>
         }
     }
 
-    /*pub fn get_sector(&self, mut buf: &mut [u8], 
-                      cluster: u32, offset: usize) 
+    /*pub fn get_sector(&self, mut buf: &mut [u8],
+                      cluster: u32, offset: usize)
     {
-        let sector = self.fst_sector + 
+        let sector = self.fst_sector +
                      (cluster as usize) * self.sectors_per_cluster +
                      offset / BLOCK_SIZE;
         self.card.read(&mut buf, sector).unwrap();
@@ -158,21 +159,22 @@ impl<'a> Fat<'a>
 
     pub fn read_cluster(&self, buf: &mut [u8], cluster: u32)
     {
-        let sector = self.fst_data_sector + 
+        let sector = self.fst_data_sector +
             (cluster as usize) * self.sectors_per_cluster;
-        self.card.read(buf, sector).unwrap() 
+        self.card.read(buf, sector).unwrap()
     }
 
     pub fn write_cluster(&self, buf: &mut [u8], cluster: u32)
     {
-        let sector = self.fst_data_sector + 
+        let sector = self.fst_data_sector +
             (cluster as usize) * self.sectors_per_cluster;
         self.card.write(buf, sector).unwrap()
     }
-    
-    pub fn root_dir(&'a self) -> Dir<'a>
+
+    pub fn root_dir(self) -> Dir
     {
-        let root_file = File::new(self, Some(self.root_fst_cluster));
+        let root_fst_cluster = self.root_fst_cluster;
+        let root_file = File::new(Rc::new(self), Some(root_fst_cluster));
         Dir { file: root_file }
     }
 }
