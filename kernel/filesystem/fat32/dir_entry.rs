@@ -16,7 +16,7 @@ const ARCHIVE   : u8 = 0x20;
 // long name descriptor
 const LND       : u8 = READ_ONLY | HIDDEN | SYSTEM | VOLUME_ID;
 
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub struct DirEntry {
     // General information
     pub name: [u8; 11],
@@ -68,7 +68,7 @@ impl DirEntry
                 utf16_buf[10] = read_u16(&buf, 24);
                 utf16_buf[11] = read_u16(&buf, 28);
                 utf16_buf[12] = read_u16(&buf, 30);
-                long_name = String::from_utf16(&utf16_buf).unwrap() + &long_name;
+                long_name.insert_str(0, &String::from_utf16(&utf16_buf).unwrap());
                 descr_pos += 32;
             }
             else {
@@ -113,7 +113,7 @@ impl DirEntry
         self.attrs & DIRECTORY == DIRECTORY
     }
 
-    pub fn print_entry(&self) -> ()
+    pub fn print(&self) -> ()
     {
         if self.is_dir() {
             print!("DIR  ");

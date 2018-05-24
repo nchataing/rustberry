@@ -27,19 +27,20 @@ pub struct Fat<'a>
 impl<'a> Fat<'a>
 {
     // which indicates which FAT is being used.
-    pub fn new(card: &'a SdCard, fst_part_sector: usize, which: usize) 
+    pub fn new(card: &'a SdCard, fst_part_sector: usize, which: usize)
         -> Result<Fat<'a>, FatError>
     {
         let bpb = match bpb::dump(card, fst_part_sector) {
             Ok(bpb) => bpb,
             Err(err) => return Err(err)
         };
+        
         let fst_sector = fst_part_sector + bpb.reserved_sectors as usize
                         + which * (bpb.sectors_per_fat_32 as usize);
         let sectors_per_cluster = bpb.sectors_per_cluster as usize;
         let cluster_size = sectors_per_cluster * BLOCK_SIZE;
-        let fst_data_sector = (bpb.reserved_sectors as usize) +
-            (bpb.fats as usize) * (bpb.sectors_per_fat_32 as usize) ;
+        let fst_data_sector = fst_part_sector+(bpb.reserved_sectors as usize) +
+            (bpb.fats as usize) * (bpb.sectors_per_fat_32 as usize);
         Ok(Fat 
         { 
             fst_sector,
@@ -47,7 +48,7 @@ impl<'a> Fat<'a>
             card,
             fat_size: bpb.sectors_per_fat_32 as usize,
             sectors_per_cluster,
-            root_fst_cluster: bpb.root_fst_cluster as u32,
+            root_fst_cluster: 0,
             cluster_size
         })
     }
