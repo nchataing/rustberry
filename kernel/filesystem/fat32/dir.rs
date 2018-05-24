@@ -36,25 +36,25 @@ impl DirTrait for Dir
         entries
     }
 
-    fn get_file(&mut self, name: &str) -> io::Result<Box<File>>
+    fn get_file(&mut self, _name: &str) -> io::Result<Box<File>>
     {
-        panic!("")
+        unimplemented!()
     }
-    fn get_subdir(&mut self, name: &str) -> io::Result<Box<DirTrait>>
+    fn get_subdir(&mut self, _name: &str) -> io::Result<Box<DirTrait>>
     {
-        panic!("")
+        unimplemented!()
     }
-    fn add_file(&mut self, name: &str) -> io::Result<()>
+    fn add_file(&mut self, _name: &str) -> io::Result<()>
     {
-        panic!("")
+        unimplemented!()
     }
-    fn add_subdir(&mut self, name: &str) -> io::Result<()>
+    fn add_subdir(&mut self, _name: &str) -> io::Result<()>
     {
-        panic!("")
+        unimplemented!()
     }
-    fn delete_child(&mut self, name: &str) -> io::Result<()>
+    fn delete_child(&mut self, _name: &str) -> io::Result<()>
     {
-        panic!("")
+        unimplemented!()
     }
 
     fn box_clone(&self) -> Box<DirTrait>

@@ -13,7 +13,7 @@ BOOTLOADER_OBJECTS = $(BUILD_DIR)/bootloader/boot.o \
 					 $(BUILD_DIR)/librustberry_bootloader.a
 BOOTLOADER_LINKER_SCRIPT = bootloader/bootloader_link.ld
 
-PROGRAMS = syscall_loop memory_monster undefined prefetch_abort data_abort
+PROGRAMS = init loop memory_monster undefined prefetch_abort data_abort hello_world
 PROGRAM_LINKER_SCRIPT = programs/prgm_link.ld
 
 # Comma-separated list, use help to show the list of available options

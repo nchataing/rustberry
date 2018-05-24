@@ -1,6 +1,7 @@
 use mmio;
 use gpio;
 pub use core::fmt::{Write, Result};
+use CharacterDevice;
 
 /// The base address for UART.
 const UART0_BASE : usize = (gpio::GPIO_BASE + 0x1000);
@@ -166,3 +167,20 @@ impl Write for Uart
     }
 }
 
+impl CharacterDevice for Uart
+{
+    fn read_byte(&self) -> u8
+    {
+        read_byte()
+    }
+
+    fn write_byte(&self, c: u8)
+    {
+        write_byte(c)
+    }
+
+    fn flush(&self)
+    {
+        flush()
+    }
+}

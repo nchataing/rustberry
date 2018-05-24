@@ -30,7 +30,9 @@ mod timer;
 
 use drivers::*;
 
+use alloc::boxed::Box;
 use alloc::rc::Rc;
+use alloc::borrow::ToOwned;
 
 use memory::kernel_alloc::GlobalKernelAllocator;
 
@@ -66,6 +68,10 @@ pub extern fn kernel_main() -> ()
 
     filesystem::virtualfs::init();
 
+    let mut devfs = filesystem::devfs::DeviceDir::new();
+    devfs.add_device("uart".to_owned(), Rc::new(uart::Uart));
+    filesystem::virtualfs::get_root().mount(Box::new(devfs), "dev");
+
     match emmc::init()
     {
         Ok(sdcard) =>
@@ -82,7 +88,7 @@ pub extern fn kernel_main() -> ()
                 }
             };
 
-            match Fat::new(Rc::new(sdcard), parts[0].fst_sector as usize, 0)
+            /*match Fat::new(Rc::new(sdcard), parts[0].fst_sector as usize, 0)
             {
                 Ok(fs) =>
                 {
@@ -92,9 +98,10 @@ pub extern fn kernel_main() -> ()
                     {
                         e.print()
                     }
+                    filesystem::virtualfs::get_root().mount(Box::new(root_dir), "");
                 },
                 Err(err) => warn!("FAT read failure! {:?}", err)
-            }
+            }*/
         },
         Err(err) => warn!("SD card failure: {:?}", err)
     }
@@ -143,8 +150,8 @@ pub extern fn kernel_main() -> ()
     }
 
     scheduler::init();
-    /*match process::Process::new("init".to_owned(),
-        include_bytes!("../target/pi2/release/prgm/syscall_loop"))
+    match process::Process::new("init".to_owned(),
+        include_bytes!("../target/pi2/release/prgm/init"))
     {
         Ok(process) =>
         {
@@ -156,8 +163,8 @@ pub extern fn kernel_main() -> ()
         },
     }
 
-    match process::Process::new("undefined".to_owned(),
-        include_bytes!("../target/pi2/release/prgm/undefined"))
+    match process::Process::new("hello_world".to_owned(),
+        include_bytes!("../target/pi2/release/prgm/hello_world"))
     {
         Ok(process) =>
         {
@@ -165,9 +172,9 @@ pub extern fn kernel_main() -> ()
         },
         Err(err) =>
         {
-            error!("Couldn't launch undefined process: {:?}", err);
+            error!("Couldn't launch hello_world process: {:?}", err);
         },
-    }*/
+    }
 
     scheduler::start();
 }

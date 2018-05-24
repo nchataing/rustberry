@@ -138,5 +138,6 @@ impl Clone for Box<Dir>
 
 pub mod mbr_reader;
 pub mod virtualfs;
+pub mod devfs;
 pub mod buffer_io;
 pub mod fat32;

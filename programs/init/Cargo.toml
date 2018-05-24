@@ -1,5 +1,5 @@
 [package]
-name = "syscall_loop"
+name = "init"
 version = "0.0.0"
 authors = ["Guillaume Bertholon <guillaume.bertholon@ens.fr>",
            "Nicolas Chataing <nicolas.chataing@ens.fr>"]

@@ -96,8 +96,12 @@ impl Dir for VirtualDir
     {
         match self.filesystem
         {
-            None => Err(io::Error { kind: io::ErrorKind::NotFound,
-                                    error: "filesystem not found" } ),
+            None =>
+            {
+                info!("{}", name);
+                Err(io::Error { kind: io::ErrorKind::NotFound,
+                                    error: "get_file: filesystem not found" } )
+            }
             Some(ref mut fs) => fs.get_file(name)
         }
     }
@@ -111,7 +115,7 @@ impl Dir for VirtualDir
             {
                 Some(ref mut fs) => fs.get_subdir(name),
                 None => Err(io::Error { kind: io::ErrorKind::NotFound,
-                                        error: "filesystem not found" } ),
+                                        error: "get_subdir: filesystem not found" } ),
             }
         }
     }

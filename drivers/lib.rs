@@ -12,6 +12,13 @@ mod quad_a7;
 pub use bcm2708::{uart, gpio, system_timer, video_core, random, emmc};
 pub use quad_a7::{interrupts, get_core_id, mailbox, core_timer};
 
+pub trait CharacterDevice
+{
+    fn read_byte(&self) -> u8;
+    fn write_byte(&self, c: u8);
+    fn flush(&self);
+}
+
 #[macro_export]
 macro_rules! print
 {

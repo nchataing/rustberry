@@ -47,15 +47,6 @@ pub fn init()
     }
 }
 
-/// Read one byte on the UART. Wait until it is available (blocking IO).
-pub fn read_byte() -> u8
-{
-    unsafe
-    {
-        while !has_char_available() {}
-        mmio::read(AUX_MU_IO_REG) as u8
-    }
-}
 
 /// Return true if there is some data available in the recieve FIFO.
 pub fn has_char_available() -> bool

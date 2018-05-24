@@ -90,7 +90,7 @@ pub fn open(reg_ctx: &mut RegisterContext)
         let path_bytes =  unsafe {
             slice::from_raw_parts(reg_ctx.r0 as *const u8, reg_ctx.r1 as usize) };
         let path = str::from_utf8(path_bytes).unwrap_or("");
-        match virtualfs::get_root().get_file(path)
+        match virtualfs::get_root().open_file(path)
         {
             Ok(file) =>
             {

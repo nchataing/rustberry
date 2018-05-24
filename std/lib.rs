@@ -5,7 +5,7 @@
 extern crate alloc;
 extern crate rlibc;
 
-extern crate rustberry_io as io;
+pub extern crate rustberry_io as io;
 extern crate rustberry_allocator as allocator;
 
 pub mod fs;
@@ -16,6 +16,34 @@ use application_alloc::GlobalAllocator;
 #[global_allocator]
 static ALLOCATOR: GlobalAllocator = GlobalAllocator;
 
+pub static mut STDIO : Option<fs::File> = None;
+
+#[macro_export]
+macro_rules! print
+{
+    ($($arg:tt)*) =>
+    {{
+        use $crate::io::Write;
+        unsafe
+        {
+            let _ = write!($crate::STDIO.as_mut().unwrap(), $($arg)*);
+        }
+    }}
+}
+
+#[macro_export]
+macro_rules! println
+{
+    ($($arg:tt)*) =>
+    {{
+        use $crate::io::Write;
+        unsafe
+        {
+            let _ = writeln!($crate::STDIO.as_mut().unwrap(), $($arg)*);
+        }
+    }}
+}
+
 extern
 {
     fn main();
@@ -24,16 +52,22 @@ extern
 #[no_mangle]
 pub extern fn start() -> !
 {
-    unsafe { main(); }
+    unsafe
+    {
+        STDIO = Some(fs::File::open("dev/uart").unwrap());
+        main();
+    }
     syscall::exit(0)
 }
 
 use core::fmt;
 #[lang = "panic_fmt"]
-pub extern fn panic_fmt(_msg: fmt::Arguments, _file: &'static str,
-                        _line: u32, _column: u32) -> !
+pub extern fn panic_fmt(msg: fmt::Arguments, file: &'static str,
+                        line: u32, column: u32) -> !
 {
-    // TODO: Show some details
+    print!("\x1b[31;1mApplication panic !\x1b[0m\n\
+           File {}, line {}, column {}:\n\
+           \x1b[1m{}\x1b[0m\n", file, line, column, msg);
     syscall::exit(101)
 }
 
