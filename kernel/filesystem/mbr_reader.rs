@@ -16,7 +16,7 @@ pub struct Partition
 
 impl Partition
 {
-    fn new_empty() -> Partition
+    pub fn new_empty() -> Partition
     {
         Partition
         {
@@ -35,7 +35,7 @@ pub enum MbrError
     InvalidPartitionStatus(usize),
 }
 
-pub fn read_partition_table(card: SdCard) -> Result<[Partition; 4], MbrError>
+pub fn read_partition_table(card: &SdCard) -> Result<[Partition; 4], MbrError>
 {
     let mut mbr_block = [0; BLOCK_SIZE];
     // The Master Boot Record is on the first block of the sd card

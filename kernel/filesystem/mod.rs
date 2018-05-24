@@ -22,19 +22,30 @@ pub struct DirEntry
     pub size: usize,
 }
 
+impl DirEntry
+{
+    pub fn print(&self)
+    {
+        match self.typ {
+            FileType::File => print!("FILE "),
+            FileType::Directory => print!("DIR  "),
+            _ => ()
+        };
+        print!("{}\n", self.name);
+    }
+}
+
 pub trait Dir
 {
-    fn list_entries(&self) -> Vec<DirEntry>;
+    fn list_entries(&mut self) -> Vec<DirEntry>;
 
-    fn get_file(&self, name: &str) -> io::Result<Box<File>>;
-    fn get_subdir(&self, name: &str) -> io::Result<Box<Dir>>;
+    fn get_file(&mut self, name: &str) -> io::Result<Box<File>>;
+    fn get_subdir(&mut self, name: &str) -> io::Result<Box<Dir>>;
     fn add_file(&mut self, name: &str) -> io::Result<()>;
     fn add_subdir(&mut self, name: &str) -> io::Result<()>;
     fn delete_child(&mut self, name: &str) -> io::Result<()>;
 
-    fn box_clone(&self) -> Box<Dir>;
-
-    fn open_file(&self, path: &str) -> io::Result<Box<File>>
+    fn open_file(&mut self, path: &str) -> io::Result<Box<File>>
     {
         let path : Vec<&str> = path.rsplitn(2, '/').collect();
         if path.len() == 1
@@ -43,12 +54,12 @@ pub trait Dir
         }
         else
         {
-            let dir = self.open_dir(path[1])?;
+            let mut dir = self.open_dir(path[1])?;
             dir.get_file(path[0])
         }
     }
 
-    fn open_dir(&self, path: &str) -> io::Result<Box<Dir>>
+    fn open_dir(&mut self, path: &str) -> io::Result<Box<Dir>>
     {
         let mut current_dir : Option<Box<Dir>> = None;
         for subdir in path.split('/')
@@ -57,7 +68,7 @@ pub trait Dir
 
             match current_dir
             {
-                Some(cur_dir) =>
+                Some(mut cur_dir) =>
                 {
                     let next_dir = cur_dir.get_subdir(subdir)?;
                     current_dir = Some(next_dir);
@@ -115,13 +126,7 @@ pub trait Dir
     }
 }
 
-impl Clone for Box<Dir>
-{
-    fn clone(&self) -> Self
-    {
-        self.box_clone()
-    }
-}
-
 pub mod mbr_reader;
-pub mod virtualfs;
+//pub mod virtualfs;
+pub mod buffer_io;
+pub mod fat32;
