@@ -4,7 +4,6 @@
 extern crate rustberry_std as std;
 
 #[no_mangle]
-pub unsafe extern fn main()
-{
+pub unsafe extern "C" fn main() {
     asm!(".word 0xf7f0a000" :::: "volatile");
 }

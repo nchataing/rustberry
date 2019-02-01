@@ -2,19 +2,16 @@
  * This is the interface of an ARM coprocessor 32 bit register.
  * This trait can be automatically derived by the coproc_reg! macro.
  */
-pub trait CoprocRegister
-{
+pub trait CoprocRegister {
     unsafe fn read() -> u32;
     unsafe fn write(val: u32);
 
-    unsafe fn set_bits(bitmask: u32)
-    {
+    unsafe fn set_bits(bitmask: u32) {
         let val = Self::read() | bitmask;
         Self::write(val);
     }
 
-    unsafe fn reset_bits(bitmask: u32)
-    {
+    unsafe fn reset_bits(bitmask: u32) {
         let val = Self::read() & !bitmask;
         Self::write(val);
     }
@@ -24,8 +21,7 @@ pub trait CoprocRegister
  * This is the interface of an ARM coprocessor 64 bit register.
  * This trait can be automatically derived by the coproc_reg64! macro.
  */
-pub trait CoprocRegister64
-{
+pub trait CoprocRegister64 {
     unsafe fn read() -> u64;
     unsafe fn write(val: u64);
 }
@@ -39,13 +35,11 @@ pub trait CoprocRegister64
  *
  * Usage example:
  * ```
- * coproc_reg!
- * {
+ * coproc_reg! {
  *     REG_NAME : p15, c0, 0, c0, 0;
  * }
  *
- * fn a()
- * {
+ * fn a() {
  *     REG_NAME::write(42);
  * }
  * ```
@@ -58,10 +52,8 @@ macro_rules! coproc_reg
     {
         use coproc_reg::CoprocRegister;
         $( #[allow(non_camel_case_types)] struct $reg_id;
-        impl CoprocRegister for $reg_id
-        {
-            unsafe fn read() -> u32
-            {
+        impl CoprocRegister for $reg_id {
+            unsafe fn read() -> u32 {
                 let result : u32;
                 asm!(concat!("mrc ", stringify!($coproc), ", ",
                              $opc1, ", $0, ", stringify!($crn),
@@ -70,8 +62,7 @@ macro_rules! coproc_reg
                 result
             }
 
-            unsafe fn write(val: u32)
-            {
+            unsafe fn write(val: u32) {
                 asm!(concat!("mcr ", stringify!($coproc), ", ",
                              $opc1, ", $0, ", stringify!($crn),
                              ", ", stringify!($crm), ", ", $opc2)
@@ -89,10 +80,8 @@ macro_rules! coproc_reg64
     {
         use coproc_reg::CoprocRegister64;
         $( #[allow(non_camel_case_types)] struct $reg_id;
-        impl CoprocRegister64 for $reg_id
-        {
-            unsafe fn read() -> u64
-            {
+        impl CoprocRegister64 for $reg_id {
+            unsafe fn read() -> u64 {
                 let low : u32;
                 let high : u32;
                 asm!(concat!("mrrc ", stringify!($coproc), ", ",
@@ -101,8 +90,7 @@ macro_rules! coproc_reg64
                 (high as u64) << 32 | low as u64
             }
 
-            unsafe fn write(val: u64)
-            {
+            unsafe fn write(val: u64) {
                 asm!(concat!("mcrr ", stringify!($coproc), ", ",
                              $opc1, ", $0, $1, ", stringify!($crn))
                      :: "r"(val as u32), "r"((val >> 32) as u32) :: "volatile");
@@ -110,4 +98,3 @@ macro_rules! coproc_reg64
         } )*
     }
 }
-

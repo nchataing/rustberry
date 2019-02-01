@@ -15,8 +15,7 @@ use core::result;
 pub type Result<T> = result::Result<T, Error>;
 
 #[derive(Debug)]
-pub struct Error
-{
+pub struct Error {
     pub kind: ErrorKind,
     pub error: &'static str,
 }

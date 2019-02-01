@@ -1,60 +1,59 @@
 use atag;
 use memory::*;
 
-linker_symbol!
-{
+linker_symbol! {
     static __end;
 }
 
 #[derive(Clone, Copy)]
-struct Section
-{
+struct Section {
     free_pages: u16, // 0 -> Full, 256 -> Free, other -> Divided
-    next: u16, // Next divided section if Divided, next free section if Free
-    prev: u16, // Previous divided section if Divided
+    next: u16,       // Next divided section if Divided, next free section if Free
+    prev: u16,       // Previous divided section if Divided
 }
 
-const FULL_SECTION : Section = Section { free_pages: 0, next: 0, prev: 0 };
+const FULL_SECTION: Section = Section {
+    free_pages: 0,
+    next: 0,
+    prev: 0,
+};
 
-static mut SECTIONS : [Section; NUM_SECTION_MAX] = [FULL_SECTION; NUM_SECTION_MAX];
-static mut FST_FREE_SECTION : u16 = 0;
-static mut FST_DIVIDED_SECTION : u16 = 0;
+static mut SECTIONS: [Section; NUM_SECTION_MAX] = [FULL_SECTION; NUM_SECTION_MAX];
+static mut FST_FREE_SECTION: u16 = 0;
+static mut FST_DIVIDED_SECTION: u16 = 0;
 
-static mut PAGES : [u16; NUM_PAGES_MAX / 16] = [0; NUM_PAGES_MAX / 16];
+static mut PAGES: [u16; NUM_PAGES_MAX / 16] = [0; NUM_PAGES_MAX / 16];
 
-pub fn init()
-{
+pub fn init() {
     let mem_size = atag::get_mem_size();
     let kernel_sections = (linker_symbol!(__end) - 1) / SECTION_SIZE + 1;
     let num_section = mem_size / SECTION_SIZE;
 
-    unsafe
-    {
+    unsafe {
         // From 0 to kernel_sections : SECTIONS[i] = FULL_SECTION
-        for i in kernel_sections .. num_section - 1
-        {
+        for i in kernel_sections..num_section - 1 {
             SECTIONS[i].free_pages = 256;
-            SECTIONS[i].next = (i+1) as u16;
+            SECTIONS[i].next = (i + 1) as u16;
         }
-        SECTIONS[num_section-1].free_pages = 256; // and next = 0
-        // Unavailable sections : SECTIONS[i] = FULL_SECTION
+        SECTIONS[num_section - 1].free_pages = 256; // and next = 0
+                                                    // Unavailable sections : SECTIONS[i] = FULL_SECTION
 
         FST_FREE_SECTION = kernel_sections as u16;
         FST_DIVIDED_SECTION = 0;
     }
 }
 
-pub fn allocate_section() -> SectionId
-{
-    unsafe
-    {
+pub fn allocate_section() -> SectionId {
+    unsafe {
         assert!(FST_FREE_SECTION != 0);
 
         let section_nb = FST_FREE_SECTION as usize;
-        match SECTIONS[section_nb]
-        {
-            Section { free_pages: 256, next, .. } =>
-            {
+        match SECTIONS[section_nb] {
+            Section {
+                free_pages: 256,
+                next,
+                ..
+            } => {
                 SECTIONS[section_nb].free_pages = 0;
                 FST_FREE_SECTION = next;
                 // There is no need to update pages here
@@ -65,16 +64,14 @@ pub fn allocate_section() -> SectionId
     }
 }
 
-pub fn deallocate_section(i : SectionId)
-{
-    unsafe
-    {
-        match SECTIONS[i.0]
-        {
+pub fn deallocate_section(i: SectionId) {
+    unsafe {
+        match SECTIONS[i.0] {
             Section { free_pages: 0, .. } => (),
-            Section { free_pages: 256, .. } =>
-                panic!("Deallocating free section {}", i),
-            _ => panic!("Deallocating divided section {}", i)
+            Section {
+                free_pages: 256, ..
+            } => panic!("Deallocating free section {}", i),
+            _ => panic!("Deallocating divided section {}", i),
         }
         SECTIONS[i.0].free_pages = 256;
         SECTIONS[i.0].next = FST_FREE_SECTION;
@@ -82,39 +79,30 @@ pub fn deallocate_section(i : SectionId)
     }
 }
 
-pub fn allocate_page() -> PageId
-{
-    unsafe
-    {
-        if FST_DIVIDED_SECTION == 0 && FST_FREE_SECTION == 0
-        {
+pub fn allocate_page() -> PageId {
+    unsafe {
+        if FST_DIVIDED_SECTION == 0 && FST_FREE_SECTION == 0 {
             panic!("No more memory available !");
         }
 
-        if FST_DIVIDED_SECTION == 0
-        {
+        if FST_DIVIDED_SECTION == 0 {
             FST_DIVIDED_SECTION = FST_FREE_SECTION;
             FST_FREE_SECTION = SECTIONS[FST_FREE_SECTION as usize].next;
             SECTIONS[FST_DIVIDED_SECTION as usize].next = 0;
         }
 
-        for page_group in 0 .. 16
-        {
+        for page_group in 0..16 {
             let page_group_id = FST_DIVIDED_SECTION as usize * 16 + page_group;
             let page = &mut PAGES[page_group_id];
-            if *page != 0xFFFF
-            {
-                for i in 0 .. 16
-                {
-                    if *page & (1 << i) == 0
-                    {
+            if *page != 0xFFFF {
+                for i in 0..16 {
+                    if *page & (1 << i) == 0 {
                         let allocated_page = i + 16 * page_group_id;
                         *page |= 1 << i;
 
                         let section = &mut SECTIONS[FST_DIVIDED_SECTION as usize];
                         section.free_pages -= 1;
-                        if section.free_pages == 0
-                        {
+                        if section.free_pages == 0 {
                             FST_DIVIDED_SECTION = section.next;
                         }
 
@@ -128,37 +116,28 @@ pub fn allocate_page() -> PageId
     }
 }
 
-pub fn deallocate_page(page_id: PageId)
-{
-    unsafe
-    {
+pub fn deallocate_page(page_id: PageId) {
+    unsafe {
         let section_id = (page_id.0 / PAGE_BY_SECTION) as u16;
         let section = &mut SECTIONS[section_id as usize];
         let page_group = &mut PAGES[page_id.0 / 16];
         let page_pos = page_id.0 % 16;
 
-        if *page_group & (1 << page_pos) == 0
-        {
+        if *page_group & (1 << page_pos) == 0 {
             panic!("Page {} is not allocated", page_id);
         }
         *page_group &= !(1 << page_pos);
 
         section.free_pages += 1;
-        if section.free_pages == 1
-        {
+        if section.free_pages == 1 {
             section.next = FST_DIVIDED_SECTION;
             SECTIONS[FST_DIVIDED_SECTION as usize].prev = section_id;
             FST_DIVIDED_SECTION = section_id;
-        }
-        else if section.free_pages == 256
-        {
+        } else if section.free_pages == 256 {
             // Remove the section from the divided section list
-            if section_id == FST_DIVIDED_SECTION
-            {
+            if section_id == FST_DIVIDED_SECTION {
                 FST_DIVIDED_SECTION = section.next;
-            }
-            else
-            {
+            } else {
                 SECTIONS[section.prev as usize].next = section.next;
             }
 
@@ -169,15 +148,11 @@ pub fn deallocate_page(page_id: PageId)
     }
 }
 
-pub fn allocate_double_page() -> PageId
-{
-    unsafe
-    {
+pub fn allocate_double_page() -> PageId {
+    unsafe {
         let mut cur_divided_section = FST_DIVIDED_SECTION;
-        while cur_divided_section != 0 || FST_FREE_SECTION != 0
-        {
-            if cur_divided_section == 0
-            {
+        while cur_divided_section != 0 || FST_FREE_SECTION != 0 {
+            if cur_divided_section == 0 {
                 FST_DIVIDED_SECTION = FST_FREE_SECTION;
                 cur_divided_section = FST_FREE_SECTION;
                 FST_FREE_SECTION = SECTIONS[FST_FREE_SECTION as usize].next;
@@ -185,31 +160,23 @@ pub fn allocate_double_page() -> PageId
             }
 
             let section = &mut SECTIONS[cur_divided_section as usize];
-            for page_group in 0 .. 16
-            {
+            for page_group in 0..16 {
                 let page_group_id = cur_divided_section as usize * 16 + page_group;
                 let page = &mut PAGES[page_group_id];
-                if *page != 0xFFFF
-                {
+                if *page != 0xFFFF {
                     // This function is mainly used for allocation of application section pages
                     // These must be aligned on 2 pages but misaligned on 4 pages
                     // It explains the strange choice of iterator below
-                    for i in (2 .. 16).step_by(4)
-                    {
-                        if *page & (0b11 << i) == 0
-                        {
+                    for i in (2..16).step_by(4) {
+                        if *page & (0b11 << i) == 0 {
                             let allocated_page = i + 16 * page_group_id;
                             *page |= 0b11 << i;
 
                             section.free_pages -= 2;
-                            if section.free_pages == 0
-                            {
-                                if cur_divided_section == FST_DIVIDED_SECTION
-                                {
+                            if section.free_pages == 0 {
+                                if cur_divided_section == FST_DIVIDED_SECTION {
                                     FST_DIVIDED_SECTION = section.next;
-                                }
-                                else
-                                {
+                                } else {
                                     let prev = SECTIONS[cur_divided_section as usize].prev;
                                     SECTIONS[prev as usize].next = section.next;
 
@@ -231,8 +198,7 @@ pub fn allocate_double_page() -> PageId
     }
 }
 
-pub fn deallocate_double_page(page_id: PageId)
-{
+pub fn deallocate_double_page(page_id: PageId) {
     deallocate_page(page_id);
     deallocate_page(PageId(page_id.0 + 1));
 }

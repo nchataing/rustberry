@@ -1,48 +1,43 @@
+use alloc::{boxed::Box, string::ToString, Vec};
+use filesystem::fat32::dir_entry::{DirEntry as FatDirEntry, Typ};
 use filesystem::fat32::file::File as FatFile;
 use filesystem::Dir as DirTrait;
-use filesystem::{DirEntry};
-use filesystem::fat32::dir_entry::{DirEntry as FatDirEntry, Typ};
-use io;
-use alloc::{Vec, boxed::Box, string::ToString};
+use filesystem::DirEntry;
 use filesystem::File;
+use io;
 
 #[derive(Clone)]
-pub struct Dir
-{
-    pub file: FatFile
+pub struct Dir {
+    pub file: FatFile,
 }
 
-impl DirTrait for Dir
-{
-    fn list_entries(&mut self) -> Vec<DirEntry>
-    {
+impl DirTrait for Dir {
+    fn list_entries(&mut self) -> Vec<DirEntry> {
         let mut done = false;
         let mut entries = Vec::new();
         let mut pos = 0;
-        while !done
-        {
+        while !done {
             match FatDirEntry::dump(&mut self.file, pos) {
                 Typ::Some(dir_entry) => {
                     entries.push(dir_entry.to_vfs_dir_entry());
                     pos = dir_entry.pos + 32;
-                },
+                }
                 Typ::Unused => pos += 32,
-                Typ::None => done = true 
+                Typ::None => done = true,
             }
         }
         entries
     }
 
-    fn get_file(&mut self, _name: &str) -> io::Result<Box<File>>
-    {
+    fn get_file(&mut self, _name: &str) -> io::Result<Box<File>> {
         unimplemented!()
         /*let mut pos = 0;
         loop {
             if let Some(dir_entry) = FatDirEntry::dump(&mut self.file, pos)
             {
                 if dir_entry.name[0] == 0 {
-                    return Err(io::Error { 
-                        kind : io::ErrorKind::NotFound, 
+                    return Err(io::Error {
+                        kind : io::ErrorKind::NotFound,
                         error : "File not found"
                     })
                 }
@@ -58,27 +53,21 @@ impl DirTrait for Dir
                     })
             }
         }*/
-        panic!("")
     }
-    fn get_subdir(&mut self, _name: &str) -> io::Result<Box<DirTrait>>
-    {
+    fn get_subdir(&mut self, _name: &str) -> io::Result<Box<DirTrait>> {
         unimplemented!()
     }
-    fn add_file(&mut self, _name: &str) -> io::Result<()>
-    {
+    fn add_file(&mut self, _name: &str) -> io::Result<()> {
         unimplemented!()
     }
-    fn add_subdir(&mut self, _name: &str) -> io::Result<()>
-    {
+    fn add_subdir(&mut self, _name: &str) -> io::Result<()> {
         unimplemented!()
     }
-    fn delete_child(&mut self, _name: &str) -> io::Result<()>
-    {
+    fn delete_child(&mut self, _name: &str) -> io::Result<()> {
         unimplemented!()
     }
 
-    fn box_clone(&self) -> Box<DirTrait>
-    {
+    fn box_clone(&self) -> Box<DirTrait> {
         Box::new(self.clone())
     }
 }

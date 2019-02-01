@@ -1,18 +1,17 @@
 #![no_std]
 #![feature(const_fn, allocator_api)]
 
-use core::ptr::NonNull;
+use core::alloc::{Alloc, AllocErr, Layout, Opaque};
 use core::cmp::max;
-use core::alloc::{Alloc, Layout, Opaque, AllocErr};
+use core::ptr::NonNull;
 
-const PAGE_SIZE : usize = 0x1000;
+const PAGE_SIZE: usize = 0x1000;
 
 /**
  * This trait defines a heap page allocator that can be used as a base for the
  * memory allocator.
  */
-pub unsafe trait HeapPageAlloc
-{
+pub unsafe trait HeapPageAlloc {
     /// This function must return the first heap address allocated.
     fn first_heap_addr(&self) -> usize;
 
@@ -30,66 +29,63 @@ pub unsafe trait HeapPageAlloc
 #[repr(C)]
 struct BlockDescriptor(usize);
 
-impl BlockDescriptor
-{
-    fn set_size(&mut self, size: usize)
-    {
+impl BlockDescriptor {
+    fn set_size(&mut self, size: usize) {
         self.0 = (size << 2) | (self.0 & 0b01);
     }
 
-    fn get_size(&self) -> usize
-    {
+    fn get_size(&self) -> usize {
         self.0 >> 2
     }
 
-    fn set_free(&mut self) { self.0 |= 1; }
-    fn set_full(&mut self) { self.0 &= !1; }
-    fn is_free(&self) -> bool { self.0 & 1 != 0 }
-
-    unsafe fn to_footer(&self) -> *mut BlockDescriptor
-    {
-        (self as *const BlockDescriptor).offset(self.get_size() as isize + 1)
-            as usize as *mut BlockDescriptor
+    fn set_free(&mut self) {
+        self.0 |= 1;
     }
-    unsafe fn to_header(&self) -> *mut BlockDescriptor
-    {
-        (self as *const BlockDescriptor).offset(-(self.get_size() as isize) - 1)
-            as usize as *mut BlockDescriptor
+    fn set_full(&mut self) {
+        self.0 &= !1;
+    }
+    fn is_free(&self) -> bool {
+        self.0 & 1 != 0
     }
 
+    unsafe fn to_footer(&self) -> *mut BlockDescriptor {
+        (self as *const BlockDescriptor).offset(self.get_size() as isize + 1) as usize
+            as *mut BlockDescriptor
+    }
+    unsafe fn to_header(&self) -> *mut BlockDescriptor {
+        (self as *const BlockDescriptor).offset(-(self.get_size() as isize) - 1) as usize
+            as *mut BlockDescriptor
+    }
 }
 
 #[repr(C)]
-struct FreeBlock
-{
+struct FreeBlock {
     descr: BlockDescriptor,
     next: Option<NonNull<FreeBlock>>,
     prev: Option<NonNull<FreeBlock>>,
 }
 
-pub struct Allocator<PageAllocator>
-{
+pub struct Allocator<PageAllocator> {
     page_allocator: PageAllocator,
-    first_free_block: Option<NonNull<FreeBlock>>
+    first_free_block: Option<NonNull<FreeBlock>>,
 }
 
-impl<PageAllocator: HeapPageAlloc> Allocator<PageAllocator>
-{
-    pub const fn new(page_allocator: PageAllocator) -> Self
-    {
-        Allocator { page_allocator, first_free_block: None }
+impl<PageAllocator: HeapPageAlloc> Allocator<PageAllocator> {
+    pub const fn new(page_allocator: PageAllocator) -> Self {
+        Allocator {
+            page_allocator,
+            first_free_block: None,
+        }
     }
 
     /**
      * Add `nb` virtual pages to the kernel stack and initialize them for
      * usage with this allocator.
      */
-    unsafe fn add_pages(&mut self, nb: usize)
-    {
+    unsafe fn add_pages(&mut self, nb: usize) {
         let fst_new_page = self.page_allocator.reserve_heap_pages(nb);
         let header;
-        if fst_new_page == self.page_allocator.first_heap_addr()
-        {
+        if fst_new_page == self.page_allocator.first_heap_addr() {
             let fst_header = fst_new_page as *mut BlockDescriptor;
             let fst_footer = fst_header.offset(1);
 
@@ -99,11 +95,12 @@ impl<PageAllocator: HeapPageAlloc> Allocator<PageAllocator>
             (*fst_footer).set_full();
 
             header = fst_footer.offset(1) as *mut FreeBlock;
+        } else {
+            header = fst_new_page as *mut FreeBlock
         }
-        else { header = fst_new_page as *mut FreeBlock }
 
-        let footer = (fst_new_page as *mut BlockDescriptor)
-            .offset((nb * PAGE_SIZE/4) as isize - 1);
+        let footer =
+            (fst_new_page as *mut BlockDescriptor).offset((nb * PAGE_SIZE / 4) as isize - 1);
 
         let size = ((footer as usize - header as usize) / 4) - 1;
         (*header).descr.set_size(size);
@@ -122,28 +119,21 @@ impl<PageAllocator: HeapPageAlloc> Allocator<PageAllocator>
     /**
      * Remove a free block from the linked list
      */
-    unsafe fn link_through(&mut self, free_block: *mut FreeBlock)
-    {
-        match (*free_block).prev
-        {
+    unsafe fn link_through(&mut self, free_block: *mut FreeBlock) {
+        match (*free_block).prev {
             None => self.first_free_block = (*free_block).next,
-            Some(ref mut prev_free_block) =>
-                prev_free_block.as_mut().next = (*free_block).next
+            Some(ref mut prev_free_block) => prev_free_block.as_mut().next = (*free_block).next,
         }
-        match (*free_block).next
-        {
+        match (*free_block).next {
             None => (),
-            Some(ref mut next_free_block) =>
-                next_free_block.as_mut().prev = (*free_block).prev
+            Some(ref mut next_free_block) => next_free_block.as_mut().prev = (*free_block).prev,
         }
     }
 
-    unsafe fn link_first(&mut self, free_block: *mut FreeBlock)
-    {
+    unsafe fn link_first(&mut self, free_block: *mut FreeBlock) {
         (*free_block).next = self.first_free_block;
         (*free_block).prev = None;
-        if let Some(ref mut old_first) = self.first_free_block
-        {
+        if let Some(ref mut old_first) = self.first_free_block {
             old_first.as_mut().prev = Some(NonNull::new_unchecked(free_block));
         }
         self.first_free_block = Some(NonNull::new_unchecked(free_block));
@@ -153,17 +143,15 @@ impl<PageAllocator: HeapPageAlloc> Allocator<PageAllocator>
      * Merge the free block at `block_addr` with the previous block if it is
      * free. In that case it removes the current block from the linked list.
      */
-    unsafe fn coalesce_before(&mut self, block_addr: *mut FreeBlock)
-    {
+    unsafe fn coalesce_before(&mut self, block_addr: *mut FreeBlock) {
         let header_addr = block_addr as *mut BlockDescriptor;
 
         let prev_footer = header_addr.offset(-1);
-        if (*prev_footer).is_free()
-        {
+        if (*prev_footer).is_free() {
             let prev_header = (*prev_footer).to_header();
 
             let cur_size = (*header_addr).get_size();
-            let new_size = (*prev_header).get_size() + cur_size  + 2;
+            let new_size = (*prev_header).get_size() + cur_size + 2;
             (*prev_header).set_size(new_size);
 
             let footer = (*header_addr).to_footer();
@@ -177,12 +165,10 @@ impl<PageAllocator: HeapPageAlloc> Allocator<PageAllocator>
      * Merge the free block at `block_addr` with the next block if it is free.
      * In that case, it removes the next block from the linked list.
      */
-    unsafe fn coalesce_after(&mut self, block_addr: *mut FreeBlock)
-    {
+    unsafe fn coalesce_after(&mut self, block_addr: *mut FreeBlock) {
         let descr_addr = block_addr as *mut BlockDescriptor;
         let next_header = (*descr_addr).to_footer().offset(1);
-        if (*next_header).is_free()
-        {
+        if (*next_header).is_free() {
             self.coalesce_before(next_header as *mut FreeBlock)
         }
     }
@@ -191,8 +177,7 @@ impl<PageAllocator: HeapPageAlloc> Allocator<PageAllocator>
      * Merge the free block with adjacent blocks. Only the leftmost new block
      * is included in the linked list.
      */
-    unsafe fn coalesce(&mut self, block_addr: *mut FreeBlock)
-    {
+    unsafe fn coalesce(&mut self, block_addr: *mut FreeBlock) {
         self.coalesce_after(block_addr);
         self.coalesce_before(block_addr);
     }
@@ -204,10 +189,11 @@ impl<PageAllocator: HeapPageAlloc> Allocator<PageAllocator>
      * The right part is considered as a new free block and gets inserted in
      * the linked list.
      */
-    unsafe fn split(&mut self, block_addr: *mut BlockDescriptor, new_size: usize)
-    {
+    unsafe fn split(&mut self, block_addr: *mut BlockDescriptor, new_size: usize) {
         let cur_size = (*block_addr).get_size();
-        if cur_size - new_size < 4 { return; }
+        if cur_size - new_size < 4 {
+            return;
+        }
 
         let new_footer = block_addr.offset(new_size as isize + 1);
         let new_header = new_footer.offset(1);
@@ -216,12 +202,9 @@ impl<PageAllocator: HeapPageAlloc> Allocator<PageAllocator>
         let remaining_size = cur_size - new_size - 2;
 
         (*block_addr).set_size(new_size);
-        if (*block_addr).is_free()
-        {
+        if (*block_addr).is_free() {
             (*new_footer).set_free();
-        }
-        else
-        {
+        } else {
             (*new_footer).set_full();
         }
         (*new_footer).set_size(new_size);
@@ -242,10 +225,14 @@ impl<PageAllocator: HeapPageAlloc> Allocator<PageAllocator>
      * The current block must have been deleted from the linked list, and the
      * previous block must be full.
      */
-    unsafe fn eliminate_padding(&mut self, header_addr: *mut BlockDescriptor, padding_size: usize)
-        -> *mut BlockDescriptor
-    {
-        if padding_size == 0 { return header_addr; }
+    unsafe fn eliminate_padding(
+        &mut self,
+        header_addr: *mut BlockDescriptor,
+        padding_size: usize,
+    ) -> *mut BlockDescriptor {
+        if padding_size == 0 {
+            return header_addr;
+        }
 
         let prev_footer = header_addr.offset(-1);
         let prev_size = (*prev_footer).get_size();
@@ -273,22 +260,18 @@ impl<PageAllocator: HeapPageAlloc> Allocator<PageAllocator>
 /**
  * Align the `base_addr` adress to respect the layout.
  */
-fn align_addr(base_addr: usize, layout: Layout) -> usize
-{
-    if base_addr % layout.align() == 0 { base_addr }
-    else
-    {
+fn align_addr(base_addr: usize, layout: Layout) -> usize {
+    if base_addr % layout.align() == 0 {
+        base_addr
+    } else {
         ((base_addr + layout.align()) & !(layout.align() - 1))
     }
 }
 
-unsafe impl<PageAllocator: HeapPageAlloc> Alloc for Allocator<PageAllocator>
-{
-    unsafe fn alloc(&mut self, layout: Layout) -> Result<NonNull<Opaque>, AllocErr>
-    {
+unsafe impl<PageAllocator: HeapPageAlloc> Alloc for Allocator<PageAllocator> {
+    unsafe fn alloc(&mut self, layout: Layout) -> Result<NonNull<Opaque>, AllocErr> {
         let mut cur_free_block = self.first_free_block;
-        while let Some(cur_block) = cur_free_block
-        {
+        while let Some(cur_block) = cur_free_block {
             let cur_block = cur_block.as_ptr();
             let cur_header = cur_block as *mut BlockDescriptor;
             let aligned_addr = align_addr(cur_header.offset(1) as usize, layout);
@@ -296,8 +279,7 @@ unsafe impl<PageAllocator: HeapPageAlloc> Alloc for Allocator<PageAllocator>
             // Size in word which is to be allocated
             let size = max((layout.size() + 3) / 4, 2);
 
-            if size + padding_size <= (*cur_header).get_size()
-            {
+            if size + padding_size <= (*cur_header).get_size() {
                 self.link_through(cur_header as *mut FreeBlock);
                 let cur_header = self.eliminate_padding(cur_header, padding_size);
                 self.split(cur_header, size);
@@ -308,9 +290,7 @@ unsafe impl<PageAllocator: HeapPageAlloc> Alloc for Allocator<PageAllocator>
                 (*footer).set_size(size);
 
                 return Ok(NonNull::new_unchecked(aligned_addr as *mut Opaque));
-            }
-            else
-            {
+            } else {
                 cur_free_block = (*cur_block).next
             }
         }
@@ -319,8 +299,7 @@ unsafe impl<PageAllocator: HeapPageAlloc> Alloc for Allocator<PageAllocator>
         self.alloc(layout)
     }
 
-    unsafe fn dealloc(&mut self, ptr: NonNull<Opaque>, _: Layout)
-    {
+    unsafe fn dealloc(&mut self, ptr: NonNull<Opaque>, _: Layout) {
         let header_addr = (ptr.as_ptr() as *mut u32).offset(-1) as *mut FreeBlock;
         (*header_addr).descr.set_free();
 

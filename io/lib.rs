@@ -462,14 +462,19 @@ pub trait Read {
         while !buf.is_empty() {
             match self.read(buf) {
                 Ok(0) => break,
-                Ok(n) => { let tmp = buf; buf = &mut tmp[n..]; }
+                Ok(n) => {
+                    let tmp = buf;
+                    buf = &mut tmp[n..];
+                }
                 Err(ref e) if e.kind == ErrorKind::Interrupted => {}
                 Err(e) => return Err(e),
             }
         }
         if !buf.is_empty() {
-            Err(Error { kind: ErrorKind::UnexpectedEof,
-                        error: "failed to fill whole buffer" })
+            Err(Error {
+                kind: ErrorKind::UnexpectedEof,
+                error: "failed to fill whole buffer",
+            })
         } else {
             Ok(())
         }
@@ -617,8 +622,12 @@ pub trait Write {
     fn write_all(&mut self, mut buf: &[u8]) -> Result<()> {
         while !buf.is_empty() {
             match self.write(buf) {
-                Ok(0) => return Err(Error { kind: ErrorKind::WriteZero,
-                                            error: "failed to write whole buffer"}),
+                Ok(0) => {
+                    return Err(Error {
+                        kind: ErrorKind::WriteZero,
+                        error: "failed to write whole buffer",
+                    });
+                }
                 Ok(n) => buf = &buf[n..],
                 Err(ref e) if e.kind == ErrorKind::Interrupted => {}
                 Err(e) => return Err(e),
@@ -685,7 +694,10 @@ pub trait Write {
             }
         }
 
-        let mut output = Adaptor { inner: self, error: Ok(()) };
+        let mut output = Adaptor {
+            inner: self,
+            error: Ok(()),
+        };
         match fmt::write(&mut output, fmt) {
             Ok(()) => Ok(()),
             Err(..) => {
@@ -693,7 +705,10 @@ pub trait Write {
                 if output.error.is_err() {
                     output.error
                 } else {
-                    Err(Error { kind: ErrorKind::Other, error: "formatter error" })
+                    Err(Error {
+                        kind: ErrorKind::Other,
+                        error: "formatter error",
+                    })
                 }
             }
         }

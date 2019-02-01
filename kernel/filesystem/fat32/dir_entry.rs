@@ -1,20 +1,20 @@
 use filesystem::buffer_io::*;
 use filesystem::fat32::file::File;
-use filesystem::FileType;
 use filesystem::DirEntry as VfsDirEntry;
+use filesystem::FileType;
 use io::*;
 
 use alloc::string::*;
 
 // File attributes
-const READ_ONLY : u8 = 0x01;
-const HIDDEN    : u8 = 0x02;
-const SYSTEM    : u8 = 0x04;
-const VOLUME_ID : u8 = 0x08;
-const DIRECTORY : u8 = 0x10;
-const ARCHIVE   : u8 = 0x20;
+const READ_ONLY: u8 = 0x01;
+const HIDDEN: u8 = 0x02;
+const SYSTEM: u8 = 0x04;
+const VOLUME_ID: u8 = 0x08;
+const DIRECTORY: u8 = 0x10;
+const ARCHIVE: u8 = 0x20;
 // long name descriptor
-const LND       : u8 = READ_ONLY | HIDDEN | SYSTEM | VOLUME_ID;
+const LND: u8 = READ_ONLY | HIDDEN | SYSTEM | VOLUME_ID;
 
 #[derive(Default, Debug, Clone)]
 pub struct DirEntry {
@@ -35,49 +35,41 @@ pub struct DirEntry {
     // Position on SdCard and dirty information
     pub pos: usize,
     dirty: bool,
-    
+
     // long name option
     long_name: Option<String>,
     long_descr_pos: usize,
 }
 
-pub enum Typ
-{
+pub enum Typ {
     Some(DirEntry),
     Unused,
     None,
 }
 
-impl DirEntry
-{
-    pub fn dump(file: &mut File, pos : usize) -> Typ
-    {
+impl DirEntry {
+    pub fn dump(file: &mut File, pos: usize) -> Typ {
         let mut buf = [0; 32];
         let mut ext_descr = true;
-        match file.seek(SeekFrom::Start(pos as u64))
-        {
+        match file.seek(SeekFrom::Start(pos as u64)) {
             Ok(_) => (),
-            Err(e) => return Typ::None
+            Err(e) => return Typ::None,
         }
         file.read_exact(&mut buf).unwrap();
-        
-        if (buf[0] == 0x0)
-        {
-            return Typ::None
+
+        if (buf[0] == 0x0) {
+            return Typ::None;
         }
-        if (buf[0] == 0xE5)
-        {
-            return Typ::Unused
+        if (buf[0] == 0xE5) {
+            return Typ::Unused;
         }
-        
+
         let mut long_name: String = "".to_string();
         let mut descr_pos = pos;
 
-        while ext_descr
-        {
-            if buf[11] == LND
-            {
-                let mut utf16_buf : [u16; 13] = [0; 13];
+        while ext_descr {
+            if buf[11] == LND {
+                let mut utf16_buf: [u16; 13] = [0; 13];
                 utf16_buf[0] = read_u16(&buf, 1);
                 utf16_buf[1] = read_u16(&buf, 3);
                 utf16_buf[2] = read_u16(&buf, 5);
@@ -95,9 +87,7 @@ impl DirEntry
                 long_name.insert_str(0, &long_name_part);
                 descr_pos += 32;
                 file.read_exact(&mut buf).unwrap();
-            }
-            else
-            {
+            } else {
                 ext_descr = false
             }
         }
@@ -120,13 +110,10 @@ impl DirEntry
         entry.pos = descr_pos;
         entry.dirty = false;
 
-        if long_name.len() == 0 
-        {
+        if long_name.len() == 0 {
             entry.long_name = None;
             entry.long_descr_pos = 0;
-        }
-        else
-        {
+        } else {
             entry.long_name = Some(long_name);
             entry.long_descr_pos = pos;
         }
@@ -134,58 +121,56 @@ impl DirEntry
         Typ::Some(entry)
     }
 
-    pub fn is_dir(&self) -> bool
-    {
+    pub fn is_dir(&self) -> bool {
         self.attrs & DIRECTORY == DIRECTORY
     }
 
-    pub fn print(&self) -> ()
-    {
+    pub fn print(&self) -> () {
         if self.is_dir() {
             print!("DIR  ");
-        }
-        else {
+        } else {
             print!("FILE ");
         }
-        if let Some(ref name) = self.long_name
-        {
+        if let Some(ref name) = self.long_name {
             println!("{}", name);
-        }
-        else
-        {
+        } else {
             println!("{}", String::from_utf8(self.name.to_vec()).unwrap());
         }
     }
 
-    pub fn size(&self) -> usize
-    {
+    pub fn size(&self) -> usize {
         self.size as usize
     }
 
-    pub fn fst_cluster(&self) -> u32
-    {
+    pub fn fst_cluster(&self) -> u32 {
         ((self.fst_cluster_hi as u32) << 16) & self.fst_cluster_lo as u32
     }
 
-    pub fn set_fst_cluster(&mut self, cluster: u32)
-    {
+    pub fn set_fst_cluster(&mut self, cluster: u32) {
         self.fst_cluster_hi = (cluster >> 16) as u16;
         self.fst_cluster_lo = cluster as u16;
     }
 
-    pub fn to_vfs_dir_entry(&self) -> VfsDirEntry
-    {
-        let name = if let Some(ref name) = self.long_name { name.clone() } 
-            else { String::from_utf8(self.name.to_vec()).unwrap() };
-        let typ = if self.is_dir() { FileType::Directory }
-            else { FileType::File };
+    pub fn to_vfs_dir_entry(&self) -> VfsDirEntry {
+        let name = if let Some(ref name) = self.long_name {
+            name.clone()
+        } else {
+            String::from_utf8(self.name.to_vec()).unwrap()
+        };
+        let typ = if self.is_dir() {
+            FileType::Directory
+        } else {
+            FileType::File
+        };
         let size = self.size as usize;
         VfsDirEntry { name, typ, size }
     }
 
-    pub fn get_name(&self) -> String
-    {
-        if let Some(ref name) = self.long_name { name.clone() } 
-        else { String::from_utf8(self.name.to_vec()).unwrap() }
+    pub fn get_name(&self) -> String {
+        if let Some(ref name) = self.long_name {
+            name.clone()
+        } else {
+            String::from_utf8(self.name.to_vec()).unwrap()
+        }
     }
 }

@@ -8,22 +8,20 @@
  */
 
 use alloc::boxed::Box;
-use memory::*;
-use memory::mmu::*;
-use drivers::mmio;
 use core::ptr::NonNull;
+use drivers::mmio;
+use memory::mmu::*;
+use memory::*;
 
-pub struct ApplicationMap
-{
+pub struct ApplicationMap {
     section_table: Box<SectionTable>,
     last_stack_page: PageId,
     last_heap_page: PageId,
-    asid: Option<u8>
+    asid: Option<u8>,
 }
 
 #[derive(Debug)]
-pub enum AppMapError
-{
+pub enum AppMapError {
     NoActiveMap,
     InvalidProgramAddress,
     StackLimitReached,
@@ -33,36 +31,33 @@ pub enum AppMapError
     HeapPageAlreadyDeallocated,
 }
 
-pub const FIRST_PRGM_PAGE : PageId = PageId(0x800_00);
-pub const FIRST_HEAP_PAGE : PageId = PageId(0xA00_00);
+pub const FIRST_PRGM_PAGE: PageId = PageId(0x800_00);
+pub const FIRST_HEAP_PAGE: PageId = PageId(0xA00_00);
 pub const STACK_PAGE_LIMIT: PageId = PageId(0xE00_00);
-pub const AFTER_END_PAGE : PageId = PageId(0x1000_00);
+pub const AFTER_END_PAGE: PageId = PageId(0x1000_00);
 
 static mut LAST_ASID: u8 = 0;
 static mut ASID_MAPS: [Option<NonNull<ApplicationMap>>; 256] = [None; 256];
 static mut ACTIVE_MAP: Option<NonNull<ApplicationMap>> = None;
 
-impl ApplicationMap
-{
-    pub fn new() -> ApplicationMap
-    {
-        ApplicationMap { section_table: Box::new(mmu::SectionTable::new()),
-            last_stack_page: AFTER_END_PAGE, last_heap_page: FIRST_HEAP_PAGE,
-            asid: None }
+impl ApplicationMap {
+    pub fn new() -> ApplicationMap {
+        ApplicationMap {
+            section_table: Box::new(mmu::SectionTable::new()),
+            last_stack_page: AFTER_END_PAGE,
+            last_heap_page: FIRST_HEAP_PAGE,
+            asid: None,
+        }
     }
 
     /// Use the application map for the current core
-    pub fn activate(&mut self)
-    {
-        let asid = match self.asid
-        {
+    pub fn activate(&mut self) {
+        let asid = match self.asid {
             Some(asid) => asid,
-            None => unsafe
-            {
+            None => unsafe {
                 // TODO: Manage the multicore case
                 let asid = LAST_ASID;
-                if let Some(mut old_map) = ASID_MAPS[asid as usize]
-                {
+                if let Some(mut old_map) = ASID_MAPS[asid as usize] {
                     old_map.as_mut().asid = None;
                     cache::tlb::invalidate_asid(asid);
                 }
@@ -71,11 +66,10 @@ impl ApplicationMap
                 ASID_MAPS[asid as usize] = Some(NonNull::new_unchecked(self));
                 self.asid = Some(asid);
                 asid
-            }
+            },
         };
 
-        unsafe
-        {
+        unsafe {
             ACTIVE_MAP = Some(NonNull::new_unchecked(self));
 
             let translation_table = &*self.section_table;
@@ -83,22 +77,32 @@ impl ApplicationMap
         }
     }
 
-    pub fn register_prgm_page(&mut self, vaddr_base: PageId, executable: bool,
-                              writable: bool) -> Result<(), AppMapError>
-    {
-        if vaddr_base.0 < FIRST_PRGM_PAGE.0 || vaddr_base.0 >= FIRST_HEAP_PAGE.0
-        {
+    pub fn register_prgm_page(
+        &mut self,
+        vaddr_base: PageId,
+        executable: bool,
+        writable: bool,
+    ) -> Result<(), AppMapError> {
+        if vaddr_base.0 < FIRST_PRGM_PAGE.0 || vaddr_base.0 >= FIRST_HEAP_PAGE.0 {
             return Err(AppMapError::InvalidProgramAddress);
         }
 
         let phys_page = physical_alloc::allocate_page();
 
-        let flags = RegionFlags { execute: executable, global: false,
-            shareable: true, access: if writable { RegionAccess::Full }
-                else { RegionAccess::ReadOnlyKernelWrite },
-            attributes: RegionAttribute::WriteAllocate };
+        let flags = RegionFlags {
+            execute: executable,
+            global: false,
+            shareable: true,
+            access: if writable {
+                RegionAccess::Full
+            } else {
+                RegionAccess::ReadOnlyKernelWrite
+            },
+            attributes: RegionAttribute::WriteAllocate,
+        };
 
-        self.section_table.register_page(vaddr_base.to_lower(), phys_page, &flags);
+        self.section_table
+            .register_page(vaddr_base.to_lower(), phys_page, &flags);
 
         #[cfg(feature = "trace_app_pages")]
         info!("Allocated application progam page at {}", vaddr_base);
@@ -107,12 +111,9 @@ impl ApplicationMap
         Ok(())
     }
 
-    pub fn add_stack_pages(&mut self, nb: usize) -> Result<(), AppMapError>
-    {
-        for _ in 0 .. nb
-        {
-            if self.last_stack_page.0 <= STACK_PAGE_LIMIT.0
-            {
+    pub fn add_stack_pages(&mut self, nb: usize) -> Result<(), AppMapError> {
+        for _ in 0..nb {
+            if self.last_stack_page.0 <= STACK_PAGE_LIMIT.0 {
                 return Err(AppMapError::StackLimitReached);
             }
 
@@ -120,11 +121,16 @@ impl ApplicationMap
 
             let phys_page = physical_alloc::allocate_page();
 
-            let flags = RegionFlags { execute: false, global: false,
-                shareable: true, access: RegionAccess::Full,
-                attributes: RegionAttribute::WriteAllocate };
+            let flags = RegionFlags {
+                execute: false,
+                global: false,
+                shareable: true,
+                access: RegionAccess::Full,
+                attributes: RegionAttribute::WriteAllocate,
+            };
 
-            self.section_table.register_page(self.last_stack_page.to_lower(), phys_page, &flags);
+            self.section_table
+                .register_page(self.last_stack_page.to_lower(), phys_page, &flags);
         }
 
         mmio::sync_barrier();
@@ -132,28 +138,30 @@ impl ApplicationMap
     }
 
     /**
-    * Add heap memory for the application.
-    * Application heap memory is mapped between 0xA000_0000 and 0xDFFF_FFFF.
-    * This function returns the identifier of the first allocated page.
-    * It returns HeapLimitReached if the requested memory goes above 0xDFFF_FFFF.
-    */
-    pub fn reserve_heap_pages(&mut self, nb: usize) -> Result<PageId, AppMapError>
-    {
+     * Add heap memory for the application.
+     * Application heap memory is mapped between 0xA000_0000 and 0xDFFF_FFFF.
+     * This function returns the identifier of the first allocated page.
+     * It returns HeapLimitReached if the requested memory goes above 0xDFFF_FFFF.
+     */
+    pub fn reserve_heap_pages(&mut self, nb: usize) -> Result<PageId, AppMapError> {
         let first_allocated_page = self.last_heap_page;
-        for _ in 0 .. nb
-        {
-            if self.last_heap_page.0 >= 0xE00_00
-            {
+        for _ in 0..nb {
+            if self.last_heap_page.0 >= 0xE00_00 {
                 return Err(AppMapError::HeapLimitReached);
             }
 
             let phys_page = physical_alloc::allocate_page();
 
-            let flags = RegionFlags { execute: false, global: false,
-                shareable: true, access: RegionAccess::Full,
-                attributes: RegionAttribute::WriteAllocate };
+            let flags = RegionFlags {
+                execute: false,
+                global: false,
+                shareable: true,
+                access: RegionAccess::Full,
+                attributes: RegionAttribute::WriteAllocate,
+            };
 
-            self.section_table.register_page(self.last_heap_page.to_lower(), phys_page, &flags);
+            self.section_table
+                .register_page(self.last_heap_page.to_lower(), phys_page, &flags);
 
             self.last_heap_page.0 += 1;
         }
@@ -161,28 +169,30 @@ impl ApplicationMap
         mmio::sync_barrier();
 
         #[cfg(feature = "trace_app_pages")]
-        info!("Allocated {} application heap pages at {}", nb, first_allocated_page);
+        info!(
+            "Allocated {} application heap pages at {}",
+            nb, first_allocated_page
+        );
 
         Ok(first_allocated_page)
     }
 
-    pub fn free_heap_pages(&mut self, nb: usize) -> Result<(), AppMapError>
-    {
-        for _ in 0 .. nb
-        {
-            if self.last_heap_page.0 <= FIRST_HEAP_PAGE.0
-            {
+    pub fn free_heap_pages(&mut self, nb: usize) -> Result<(), AppMapError> {
+        for _ in 0..nb {
+            if self.last_heap_page.0 <= FIRST_HEAP_PAGE.0 {
                 return Err(AppMapError::HeapEmpty);
             }
             self.last_heap_page.0 -= 1;
 
             let ttbl_addr = self.last_heap_page.to_lower().to_addr();
-            let paddr = self.section_table.translate_addr(ttbl_addr)
+            let paddr = self
+                .section_table
+                .translate_addr(ttbl_addr)
                 .ok_or(AppMapError::HeapPageAlreadyDeallocated)?;
 
-            self.section_table.unregister_page(self.last_heap_page.to_lower());
-            if let Some(asid) = self.asid
-            {
+            self.section_table
+                .unregister_page(self.last_heap_page.to_lower());
+            if let Some(asid) = self.asid {
                 cache::tlb::invalidate_asid_page(asid, self.last_heap_page);
             }
 
@@ -197,34 +207,28 @@ impl ApplicationMap
     }
 }
 
-impl Drop for ApplicationMap
-{
-    fn drop(&mut self)
-    {
+impl Drop for ApplicationMap {
+    fn drop(&mut self) {
         #[cfg(feature = "trace_app_pages")]
         info!("Dropped application map");
 
         // When the application map is destroyed free all the pages.
-        for page in (FIRST_PRGM_PAGE.0 .. self.last_heap_page.0)
-                    .chain(self.last_stack_page.0 .. AFTER_END_PAGE.0)
+        for page in (FIRST_PRGM_PAGE.0..self.last_heap_page.0)
+            .chain(self.last_stack_page.0..AFTER_END_PAGE.0)
         {
             let ttbl_addr = (page - 0x800_00) * PAGE_SIZE;
-            if let Some(paddr) = self.section_table.translate_addr(ttbl_addr)
-            {
+            if let Some(paddr) = self.section_table.translate_addr(ttbl_addr) {
                 physical_alloc::deallocate_page(PageId(paddr / PAGE_SIZE));
             }
         }
 
-        unsafe
-        {
-            if ACTIVE_MAP == Some(NonNull::new_unchecked(self))
-            {
+        unsafe {
+            if ACTIVE_MAP == Some(NonNull::new_unchecked(self)) {
                 mmu::disable_application_table();
                 ACTIVE_MAP = None;
             }
 
-            if let Some(asid) = self.asid
-            {
+            if let Some(asid) = self.asid {
                 cache::tlb::invalidate_asid(asid);
                 ASID_MAPS[asid as usize] = None;
             }
@@ -239,16 +243,14 @@ impl Drop for ApplicationMap
  * Return error if there are too many (16) pages added at once, or if memory is
  * exhausted.
  */
-pub fn grow_current_stack(addr: usize) -> Result<(), AppMapError>
-{
+pub fn grow_current_stack(addr: usize) -> Result<(), AppMapError> {
     let page = PageId::from(addr);
     let mut active_map_ptr = unsafe { ACTIVE_MAP.ok_or(AppMapError::NoActiveMap)? };
     let active_map = unsafe { active_map_ptr.as_mut() };
     let last_stack_page = active_map.last_stack_page;
 
     let nb_pages_to_add = last_stack_page.0 - page.0;
-    if nb_pages_to_add > 16
-    {
+    if nb_pages_to_add > 16 {
         return Err(AppMapError::TooManyStackPagesAtOnce);
     }
 

@@ -1,2 +1,2 @@
-mod mailbox;
 pub mod framebuffer;
+mod mailbox;

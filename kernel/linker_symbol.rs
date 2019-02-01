@@ -11,4 +11,3 @@ macro_rules! linker_symbol
 
     ( $x:ident ) => (unsafe { &$x as *const u8 as usize });
 }
-

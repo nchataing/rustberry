@@ -6,12 +6,12 @@
  */
 
 /// The BCM 2708 peripheral base address.
-pub const PERIPHERAL_BASE : usize = 0x3F00_0000;
+pub const PERIPHERAL_BASE: usize = 0x3F00_0000;
 
+pub mod emmc;
 pub mod gpio;
+pub mod interrupts;
+pub mod random;
+pub mod system_timer;
 pub mod uart;
 pub mod video_core;
-pub mod interrupts;
-pub mod system_timer;
-pub mod random;
-pub mod emmc;
