@@ -10,8 +10,8 @@
  * This implies that the same mailbox have the same role on each core.
  */
 
-use mmio;
-use quad_a7;
+use crate::mmio;
+use crate::quad_a7;
 
 const MAILBOX_INTERRUPT_CONTROL_BASE: usize = quad_a7::PERIPHERAL_BASE + 0x50;
 const MAILBOX_SET_BASE: usize = quad_a7::PERIPHERAL_BASE + 0x80;

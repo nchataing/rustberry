@@ -2,6 +2,7 @@
 name = "prefetch_abort"
 version = "0.0.0"
 authors = ["Guillaume Bertholon <guillaume.bertholon@ens.fr>"]
+edition = "2018"
 
 [lib]
 crate-type = ["staticlib"]

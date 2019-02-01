@@ -1,7 +1,7 @@
-use bcm2708;
-use bcm2708::gpio;
+use crate::bcm2708;
+use crate::bcm2708::gpio;
+use crate::mmio;
 pub use core::fmt::{Result, Write};
-use mmio;
 
 const AUX_BASE: usize = bcm2708::PERIPHERAL_BASE + 0x215000;
 

@@ -3,8 +3,8 @@
  * It is intended for communications with the VC GPU.
  */
 
-use bcm2708;
-use mmio;
+use crate::bcm2708;
+use crate::mmio;
 
 /// Mailbox 0 base address (Read by ARM)
 const MAIL0_BASE: usize = bcm2708::PERIPHERAL_BASE + 0xB880;

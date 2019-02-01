@@ -1,5 +1,5 @@
+use super::*;
 use drivers::mmio;
-use memory::*;
 
 #[derive(Clone, Copy)]
 pub enum RegionAttribute {
@@ -254,8 +254,8 @@ coproc_reg! {
 }
 
 pub unsafe fn setup_kernel_table(translation_table: *const SectionTable) {
-    use system_control;
-    use system_control::Features;
+    use crate::system_control;
+    use crate::system_control::Features;
 
     system_control::disable_features(
         Features::MMU

@@ -1,5 +1,5 @@
-use syscall;
-//use syscall::OpenFlags;
+use crate::syscall;
+//use crate::syscall::OpenFlags;
 use io;
 use io::{Read, Seek, SeekFrom, Write};
 

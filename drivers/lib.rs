@@ -1,5 +1,5 @@
 #![no_std]
-#![feature(asm, exact_chunks)]
+#![feature(asm)]
 #![allow(dead_code)]
 
 #[macro_use]

@@ -1,4 +1,4 @@
-use emmc::{SdCard, BLOCK_SIZE};
+use drivers::emmc::{SdCard, BLOCK_SIZE};
 
 const MAGIC: u16 = 0x55AA;
 const FIRST_ENTRY: usize = 0x1BE;

@@ -1,10 +1,10 @@
+use crate::process::{ChildEvent, Process, ProcessState, RegisterContext};
+use crate::sparse_vec::SparseVec;
+use crate::system_control;
+use crate::timer;
 use alloc::boxed::Box;
-use alloc::VecDeque;
+use alloc::collections::vec_deque::VecDeque;
 use drivers::core_timer;
-use process::{ChildEvent, Process, ProcessState, RegisterContext};
-use sparse_vec::SparseVec;
-use system_control;
-use timer;
 
 type Pid = usize;
 

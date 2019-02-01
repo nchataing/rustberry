@@ -1,6 +1,6 @@
-use bcm2708;
-use mmio;
-use quad_a7;
+use crate::bcm2708;
+use crate::mmio;
+use crate::quad_a7;
 
 const IRQ_SOURCE_BASE: usize = quad_a7::PERIPHERAL_BASE + 0x60;
 const FIQ_SOURCE_BASE: usize = quad_a7::PERIPHERAL_BASE + 0x70;

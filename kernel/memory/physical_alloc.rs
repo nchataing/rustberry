@@ -1,5 +1,5 @@
-use atag;
-use memory::*;
+use super::*;
+use crate::atag;
 
 linker_symbol! {
     static __end;

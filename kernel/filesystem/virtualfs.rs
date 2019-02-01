@@ -1,9 +1,9 @@
+use crate::filesystem::{Dir, DirEntry, File, FileType};
 use alloc::boxed::Box;
 use alloc::rc::Rc;
 use alloc::string::{String, ToString};
-use alloc::{BTreeMap, Vec};
+use alloc::{collections::btree_map::BTreeMap, vec::Vec};
 use core::cell::RefCell;
-use filesystem::{Dir, DirEntry, File, FileType};
 use io;
 
 #[derive(Clone)]
@@ -42,7 +42,8 @@ impl VirtualDir {
         }
     }
 
-    /*pub fn unmount(&mut self, path: &str) {
+    /*pub fn unmount(&mut self, path: &str)
+    {
         // TODO
     }*/
 

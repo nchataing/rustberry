@@ -13,8 +13,8 @@
  * A core can only set the remaining time or mask its own timers.
  */
 
-use mmio;
-use quad_a7;
+use crate::mmio;
+use crate::quad_a7;
 
 #[derive(Clone, Copy)]
 pub enum CoreTimer {

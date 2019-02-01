@@ -1,6 +1,6 @@
 #![no_std]
-#![feature(asm, lang_items, use_extern_macros)]
-#![feature(alloc, allocator_api, global_allocator)]
+#![feature(asm, lang_items, panic_info_message)]
+#![feature(alloc, allocator_api)]
 extern crate alloc;
 extern crate rlibc;
 
@@ -56,15 +56,26 @@ pub extern "C" fn start() -> ! {
     syscall::exit(0)
 }
 
-use core::fmt;
-#[lang = "panic_fmt"]
-pub extern "C" fn panic_fmt(msg: fmt::Arguments, file: &'static str, line: u32, column: u32) -> ! {
-    print!(
-        "\x1b[31;1mApplication panic !\x1b[0m\n\
-         File {}, line {}, column {}:\n\
-         \x1b[1m{}\x1b[0m\n",
-        file, line, column, msg
-    );
+use core::panic::PanicInfo;
+#[panic_handler]
+fn panic(info: &PanicInfo) -> ! {
+    if let Some(loc) = info.location() {
+        print!(
+            "\x1b[31;1mKernel panic !\x1b[0m\n\
+             File {}, line {}, column {}:\n\
+             \x1b[1m{}\x1b[0m\n",
+            loc.file(),
+            loc.line(),
+            loc.column(),
+            info.message().unwrap()
+        );
+    } else {
+        print!(
+            "\x1b[31;1mKernel panic !\x1b[0m\n\
+             \x1b[1m{}\x1b[0m\n",
+            info.message().unwrap()
+        );
+    }
     syscall::exit(101)
 }
 

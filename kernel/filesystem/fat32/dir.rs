@@ -1,9 +1,9 @@
-use alloc::{boxed::Box, string::ToString, Vec};
-use filesystem::fat32::dir_entry::{DirEntry as FatDirEntry, Typ};
-use filesystem::fat32::file::File as FatFile;
-use filesystem::Dir as DirTrait;
-use filesystem::DirEntry;
-use filesystem::File;
+use crate::filesystem::fat32::dir_entry::{DirEntry as FatDirEntry, Typ};
+use crate::filesystem::fat32::file::File as FatFile;
+use crate::filesystem::Dir as DirTrait;
+use crate::filesystem::DirEntry;
+use crate::filesystem::File;
+use alloc::{boxed::Box, vec::Vec};
 use io;
 
 #[derive(Clone)]
@@ -30,7 +30,6 @@ impl DirTrait for Dir {
     }
 
     fn get_file(&mut self, _name: &str) -> io::Result<Box<File>> {
-        unimplemented!()
         /*let mut pos = 0;
         loop {
             if let Some(dir_entry) = FatDirEntry::dump(&mut self.file, pos)
@@ -53,6 +52,7 @@ impl DirTrait for Dir {
                     })
             }
         }*/
+        panic!("")
     }
     fn get_subdir(&mut self, _name: &str) -> io::Result<Box<DirTrait>> {
         unimplemented!()

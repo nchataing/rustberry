@@ -1,8 +1,8 @@
-use alloc::BinaryHeap;
+use crate::process::ProcessState;
+use crate::scheduler;
+use alloc::collections::binary_heap::BinaryHeap;
 use drivers::system_timer;
 use drivers::system_timer::SystemTimer;
-use process::ProcessState;
-use scheduler;
 
 #[derive(PartialEq, Eq, PartialOrd, Ord, Clone, Copy)]
 struct Trigger {

@@ -1,5 +1,5 @@
-use bcm2708;
-use mmio;
+use crate::bcm2708;
+use crate::mmio;
 
 /// The GPIO registers base address.
 pub const GPIO_BASE: usize = (bcm2708::PERIPHERAL_BASE + 0x200000);

@@ -50,7 +50,7 @@ macro_rules! coproc_reg
     { $( $reg_id: ident : $coproc: ident, $crn: ident, $opc1: expr,
                           $crm: ident, $opc2: expr; )* } =>
     {
-        use coproc_reg::CoprocRegister;
+        use crate::coproc_reg::CoprocRegister;
         $( #[allow(non_camel_case_types)] struct $reg_id;
         impl CoprocRegister for $reg_id {
             unsafe fn read() -> u32 {
@@ -78,7 +78,7 @@ macro_rules! coproc_reg64
 {
     { $( $reg_id: ident : $coproc: ident, $crn: ident, $opc1: expr; )* } =>
     {
-        use coproc_reg::CoprocRegister64;
+        use crate::coproc_reg::CoprocRegister64;
         $( #[allow(non_camel_case_types)] struct $reg_id;
         impl CoprocRegister64 for $reg_id {
             unsafe fn read() -> u64 {

@@ -1,5 +1,5 @@
 use alloc::boxed::Box;
-use alloc::{String, Vec};
+use alloc::{string::String, vec::Vec};
 use io;
 use io::{Read, Seek, Write};
 

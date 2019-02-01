@@ -1,7 +1,7 @@
+use super::*;
 use allocator::{Allocator, HeapPageAlloc};
-use core::alloc::{Alloc, GlobalAlloc, Layout, Opaque};
+use core::alloc::{Alloc, GlobalAlloc, Layout};
 use core::ptr::NonNull;
-use memory::*;
 
 struct KernelHeapAllocator;
 unsafe impl HeapPageAlloc for KernelHeapAllocator {
@@ -24,23 +24,23 @@ static mut KERNEL_ALLOCATOR: KernelAllocator = Allocator::new(KernelHeapAllocato
 
 pub struct GlobalKernelAllocator;
 unsafe impl GlobalAlloc for GlobalKernelAllocator {
-    unsafe fn alloc(&self, layout: Layout) -> *mut Opaque {
+    unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
         // Particular cases for exact page or section demands
         if layout.size() == PAGE_SIZE && layout.align() == PAGE_SIZE {
-            return physical_alloc::allocate_page().to_addr() as *mut Opaque;
+            return physical_alloc::allocate_page().to_addr() as *mut u8;
         } else if layout.size() == 2 * PAGE_SIZE && layout.align() == 2 * PAGE_SIZE {
-            return physical_alloc::allocate_double_page().to_addr() as *mut Opaque;
+            return physical_alloc::allocate_double_page().to_addr() as *mut u8;
         } else if layout.size() == SECTION_SIZE && layout.align() == SECTION_SIZE {
-            return physical_alloc::allocate_section().to_addr() as *mut Opaque;
+            return physical_alloc::allocate_section().to_addr() as *mut u8;
         }
 
         KERNEL_ALLOCATOR
             .alloc(layout)
             .map(|x| x.as_ptr())
-            .unwrap_or(0 as *mut Opaque)
+            .unwrap_or(0 as *mut u8)
     }
 
-    unsafe fn dealloc(&self, ptr: *mut Opaque, layout: Layout) {
+    unsafe fn dealloc(&self, ptr: *mut u8, layout: Layout) {
         if layout.size() == PAGE_SIZE && layout.align() == PAGE_SIZE {
             physical_alloc::deallocate_page(PageId(ptr as usize / PAGE_SIZE));
         } else if layout.size() == 2 * PAGE_SIZE && layout.align() == 2 * PAGE_SIZE {
@@ -56,10 +56,9 @@ unsafe impl GlobalAlloc for GlobalKernelAllocator {
     }
 }
 
-#[lang = "oom"]
-#[no_mangle]
-pub extern "C" fn rust_oom() -> ! {
-    panic!("memory allocation failed");
+#[alloc_error_handler]
+fn oom(layout: core::alloc::Layout) -> ! {
+    panic!("memory allocation failed ({:?})", layout);
 }
 
 // Purple magic inside

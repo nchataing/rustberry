@@ -1,9 +1,9 @@
+use crate::filesystem::buffer_io::*;
+use crate::filesystem::fat32::bpb;
+use crate::filesystem::fat32::bpb::FatError;
+use crate::filesystem::fat32::{dir::Dir, file::File};
 use alloc::rc::Rc;
-use emmc::{SdCard, BLOCK_SIZE};
-use filesystem::buffer_io::*;
-use filesystem::fat32::bpb;
-use filesystem::fat32::bpb::FatError;
-use filesystem::fat32::{dir::Dir, file::File};
+use drivers::emmc::{SdCard, BLOCK_SIZE};
 
 #[derive(Debug)]
 pub enum Entry {
@@ -123,9 +123,12 @@ impl Fat {
         }
     }
 
-    /*pub fn get_sector(&self, mut buf: &mut [u8], cluster: u32, offset: usize) {
-        let sector =
-            self.fst_sector + (cluster as usize) * self.sectors_per_cluster + offset / BLOCK_SIZE;
+    /*pub fn get_sector(&self, mut buf: &mut [u8],
+                      cluster: u32, offset: usize)
+    {
+        let sector = self.fst_sector +
+                     (cluster as usize) * self.sectors_per_cluster +
+                     offset / BLOCK_SIZE;
         self.card.read(&mut buf, sector).unwrap();
     }*/
 

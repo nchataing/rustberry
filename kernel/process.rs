@@ -1,13 +1,13 @@
+use crate::filesystem::File;
+use crate::memory;
+use crate::sparse_vec::SparseVec;
+use crate::system_control;
 use alloc::boxed::Box;
-use alloc::{String, Vec};
+use alloc::{string::String, vec::Vec};
 use core::ptr;
 use drivers::mmio;
-use filesystem::File;
 use goblin::elf32;
-use memory;
 use plain;
-use sparse_vec::SparseVec;
-use system_control;
 
 #[derive(Debug, Clone)]
 #[repr(C)]

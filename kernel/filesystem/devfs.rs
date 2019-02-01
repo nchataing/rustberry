@@ -1,10 +1,11 @@
+use super::{Dir, DirEntry, File, FileType};
 use alloc::boxed::Box;
+use alloc::collections::btree_map::BTreeMap;
 use alloc::rc::Rc;
 use alloc::string::String;
-use alloc::{BTreeMap, Vec};
+use alloc::vec::Vec;
 use core::cmp::min;
 use drivers::CharacterDevice;
-use filesystem::{Dir, DirEntry, File, FileType};
 use io;
 use io::{Read, Seek, Write};
 

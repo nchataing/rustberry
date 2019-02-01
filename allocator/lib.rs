@@ -1,7 +1,7 @@
 #![no_std]
 #![feature(const_fn, allocator_api)]
 
-use core::alloc::{Alloc, AllocErr, Layout, Opaque};
+use core::alloc::{Alloc, AllocErr, Layout};
 use core::cmp::max;
 use core::ptr::NonNull;
 
@@ -269,7 +269,7 @@ fn align_addr(base_addr: usize, layout: Layout) -> usize {
 }
 
 unsafe impl<PageAllocator: HeapPageAlloc> Alloc for Allocator<PageAllocator> {
-    unsafe fn alloc(&mut self, layout: Layout) -> Result<NonNull<Opaque>, AllocErr> {
+    unsafe fn alloc(&mut self, layout: Layout) -> Result<NonNull<u8>, AllocErr> {
         let mut cur_free_block = self.first_free_block;
         while let Some(cur_block) = cur_free_block {
             let cur_block = cur_block.as_ptr();
@@ -289,7 +289,7 @@ unsafe impl<PageAllocator: HeapPageAlloc> Alloc for Allocator<PageAllocator> {
                 (*footer).set_full();
                 (*footer).set_size(size);
 
-                return Ok(NonNull::new_unchecked(aligned_addr as *mut Opaque));
+                return Ok(NonNull::new_unchecked(aligned_addr as *mut u8));
             } else {
                 cur_free_block = (*cur_block).next
             }
@@ -299,7 +299,7 @@ unsafe impl<PageAllocator: HeapPageAlloc> Alloc for Allocator<PageAllocator> {
         self.alloc(layout)
     }
 
-    unsafe fn dealloc(&mut self, ptr: NonNull<Opaque>, _: Layout) {
+    unsafe fn dealloc(&mut self, ptr: NonNull<u8>, _: Layout) {
         let header_addr = (ptr.as_ptr() as *mut u32).offset(-1) as *mut FreeBlock;
         (*header_addr).descr.set_free();
 

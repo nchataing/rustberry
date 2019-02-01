@@ -7,11 +7,11 @@
  * Each application has one so each map should be mostly empty.
  */
 
+use crate::memory::mmu::*;
+use crate::memory::*;
 use alloc::boxed::Box;
 use core::ptr::NonNull;
 use drivers::mmio;
-use memory::mmu::*;
-use memory::*;
 
 pub struct ApplicationMap {
     section_table: Box<SectionTable>,

@@ -1,10 +1,10 @@
+use crate::memory::{application_map, kernel_map};
+use crate::process::RegisterContext;
+use crate::scheduler;
+use crate::syscall;
+use crate::system_control;
+use crate::system_control::ProcessorMode;
 use drivers;
-use memory::{application_map, kernel_map};
-use process::RegisterContext;
-use scheduler;
-use syscall;
-use system_control;
-use system_control::ProcessorMode;
 
 #[no_mangle]
 pub extern "C" fn undefined_instruction_handler(reg_ctx: &mut RegisterContext) {

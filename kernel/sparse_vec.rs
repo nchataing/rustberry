@@ -1,4 +1,4 @@
-use alloc::Vec;
+use alloc::vec::Vec;
 use core::ops::{Index, IndexMut};
 
 enum Entry<T> {
@@ -63,7 +63,7 @@ impl<T> SparseVec<T> {
             Entry::Full(_) => {
                 use core::mem::replace;
 
-                let mut old_entry = replace(entry, Entry::Empty(self.first_empty));
+                let old_entry = replace(entry, Entry::Empty(self.first_empty));
                 self.first_empty = index;
 
                 if let Entry::Full(element) = old_entry {

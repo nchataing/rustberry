@@ -1,7 +1,7 @@
+use crate::gpio;
+use crate::mmio;
+use crate::CharacterDevice;
 pub use core::fmt::{Result, Write};
-use gpio;
-use mmio;
-use CharacterDevice;
 
 /// The base address for UART.
 const UART0_BASE: usize = (gpio::GPIO_BASE + 0x1000);

@@ -1,6 +1,6 @@
-use bcm2708;
-use bcm2708::interrupts;
-use mmio;
+use crate::bcm2708;
+use crate::bcm2708::interrupts;
+use crate::mmio;
 
 const TIMER_BASE: usize = (bcm2708::PERIPHERAL_BASE + 0x3000);
 

@@ -1,5 +1,5 @@
-use bcm2708;
-use mmio;
+use crate::bcm2708;
+use crate::mmio;
 
 const INTERRUPT_BASE: usize = (bcm2708::PERIPHERAL_BASE + 0xB000);
 

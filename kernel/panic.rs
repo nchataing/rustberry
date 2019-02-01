@@ -1,19 +1,26 @@
-use core::fmt;
-use gpio;
-use interrupts;
-use mmio;
+use crate::gpio;
+use crate::interrupts;
+use crate::mmio;
+use core::panic::PanicInfo;
 
-#[lang = "panic_fmt"]
-#[no_mangle]
-pub extern "C" fn panic_fmt(msg: fmt::Arguments, file: &'static str, line: u32, column: u32) -> ! {
+#[panic_handler]
+fn panic(info: &PanicInfo) -> ! {
     interrupts::disable_all();
 
-    print!(
-        "\x1b[31;1mKernel panic !\x1b[0m\n\
-         File {}, line {}, column {}:\n\
-         \x1b[1m{}\x1b[0m\n",
-        file, line, column, msg
-    );
+    print!("\x1b[31;1mKernel panic !\x1b[0m\n");
+
+    if let Some(loc) = info.location() {
+        print!(
+            "File {}, line {}, column {}:\n",
+            loc.file(),
+            loc.line(),
+            loc.column()
+        );
+    }
+
+    if let Some(msg) = info.message() {
+        print!(" \x1b[1m{}\x1b[0m\n", msg);
+    }
 
     gpio::select_pin_function(47, gpio::PinFunction::Output);
     gpio::select_pin_function(35, gpio::PinFunction::Output);

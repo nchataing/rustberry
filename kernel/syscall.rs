@@ -1,9 +1,9 @@
+use crate::filesystem::{virtualfs, Dir};
+use crate::process::{ChildEvent, ProcessState, RegisterContext};
+use crate::scheduler;
+use crate::timer;
 use core::{slice, str};
-use filesystem::{virtualfs, Dir};
 use io::SeekFrom;
-use process::{ChildEvent, ProcessState, RegisterContext};
-use scheduler;
-use timer;
 
 pub fn read(reg_ctx: &mut RegisterContext) {
     if let Some(process) = scheduler::current_process() {

@@ -21,7 +21,7 @@ pub fn invalidate_branch_predictor() {
  * It must be used after changes in the translation table.
  */
 pub mod tlb {
-    use memory::PageId;
+    use crate::memory::PageId;
 
     coproc_reg! {
         TLBIALLIS  : p15, c8, 0, c3, 0;

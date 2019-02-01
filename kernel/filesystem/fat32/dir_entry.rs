@@ -1,7 +1,7 @@
-use filesystem::buffer_io::*;
-use filesystem::fat32::file::File;
-use filesystem::DirEntry as VfsDirEntry;
-use filesystem::FileType;
+use crate::filesystem::buffer_io::*;
+use crate::filesystem::fat32::file::File;
+use crate::filesystem::DirEntry as VfsDirEntry;
+use crate::filesystem::FileType;
 use io::*;
 
 use alloc::string::*;
@@ -53,14 +53,14 @@ impl DirEntry {
         let mut ext_descr = true;
         match file.seek(SeekFrom::Start(pos as u64)) {
             Ok(_) => (),
-            Err(e) => return Typ::None,
+            Err(_) => return Typ::None,
         }
         file.read_exact(&mut buf).unwrap();
 
-        if (buf[0] == 0x0) {
+        if buf[0] == 0x0 {
             return Typ::None;
         }
-        if (buf[0] == 0xE5) {
+        if buf[0] == 0xE5 {
             return Typ::Unused;
         }
 

@@ -1,7 +1,7 @@
 #![no_std]
-#![feature(asm, lang_items, const_fn, iterator_step_by)]
+#![feature(asm, panic_info_message, alloc_error_handler)]
 #![allow(dead_code)]
-#![feature(alloc, allocator_api, global_allocator)]
+#![feature(alloc, allocator_api)]
 #[macro_use]
 extern crate alloc;
 extern crate rlibc;
@@ -87,26 +87,22 @@ pub extern "C" fn kernel_main() -> () {
                 }
             };
 
-            /*match Fat::new(Rc::new(sdcard), parts[0].fst_sector as usize, 0)
-            {
-                Ok(fs) =>
-                {
+            match Fat::new(Rc::new(sdcard), parts[0].fst_sector as usize, 0) {
+                Ok(fs) => {
                     let mut root_dir = fs.root_dir();
                     let root_entries = root_dir.list_entries();
-                    for e in &root_entries
-                    {
+                    for e in &root_entries {
                         e.print()
                     }
                     filesystem::virtualfs::get_root().mount(Box::new(root_dir), "");
-                },
-                Err(err) => warn!("FAT read failure! {:?}", err)
-            }*/
+                }
+                Err(err) => warn!("FAT read failure! {:?}", err),
+            }
         }
         Err(err) => warn!("SD card failure: {:?}", err),
     }
 
-    /*unsafe
-    {
+    /*unsafe {
         // Each of the following operations must fail !
         mmio::write(0 as *mut u32, 0); // Data abort
         asm!("bx $0" :: "r"(0x2000) :: "volatile"); // Prefetch abort

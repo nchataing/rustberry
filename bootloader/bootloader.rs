@@ -1,5 +1,5 @@
 #![no_std]
-#![feature(asm, lang_items)]
+#![feature(asm)]
 #![allow(dead_code)]
 
 extern crate rustberry_drivers as drivers;
@@ -67,8 +67,9 @@ pub extern "C" fn bootloader_main() -> ! {
     }
 }
 
-#[lang = "panic_fmt"]
-#[no_mangle]
-pub extern "C" fn panic_fmt() -> ! {
+use core::panic::PanicInfo;
+
+#[panic_handler]
+pub extern "C" fn panic_fmt(_: &PanicInfo) -> ! {
     loop {}
 }

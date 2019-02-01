@@ -1,8 +1,8 @@
+use crate::filesystem::fat32::dir_entry::DirEntry;
+use crate::filesystem::fat32::table::{Entry, Fat};
 use alloc::rc::Rc;
 use core::cell::RefCell;
 use core::cmp::min;
-use filesystem::fat32::dir_entry::DirEntry;
-use filesystem::fat32::table::{Entry, Fat};
 use io::*;
 
 #[derive(Clone)]

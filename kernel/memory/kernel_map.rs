@@ -12,10 +12,10 @@
  * 0x7000_0000 - 0x7FFF_FFFF: Supervisor (main kernel mode) stack, growing down
  */
 
-use atag;
+use super::mmu::*;
+use super::*;
+use crate::atag;
 use drivers::mmio;
-use memory::mmu::*;
-use memory::*;
 
 static mut KERNEL_SECTION_TABLE: SectionTable = SectionTable::new();
 static mut KERNEL_PAGE_TABLE: PageTable = PageTable::new();

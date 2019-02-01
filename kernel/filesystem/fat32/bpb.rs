@@ -1,5 +1,5 @@
-use emmc::{SdCard, BLOCK_SIZE};
-use filesystem::buffer_io::*;
+use crate::filesystem::buffer_io::*;
+use drivers::emmc::{SdCard, BLOCK_SIZE};
 
 #[derive(Default, Debug)]
 pub struct BiosParameterBlock {

@@ -5,8 +5,8 @@
  * This is inspired from Linux code at drivers/char/hw_random/bcm2835-rng.c
  */
 
-use bcm2708;
-use mmio;
+use crate::bcm2708;
+use crate::mmio;
 
 const RNG_BASE: usize = bcm2708::PERIPHERAL_BASE + 0x104000;
 

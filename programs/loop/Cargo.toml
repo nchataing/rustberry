@@ -3,6 +3,7 @@ name = "loop"
 version = "0.0.0"
 authors = ["Guillaume Bertholon <guillaume.bertholon@ens.fr>",
            "Nicolas Chataing <nicolas.chataing@ens.fr>"]
+edition = "2018"
 
 [lib]
 crate-type = ["staticlib"]

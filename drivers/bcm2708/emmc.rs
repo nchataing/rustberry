@@ -14,9 +14,9 @@
  *  https://github.com/jncronin/rpi-boot/blob/master/emmc.c
  */
 
-use bcm2708;
-use mmio;
-use uart::{Uart, Write};
+use crate::bcm2708;
+use crate::mmio;
+use crate::uart::{Uart, Write};
 
 const EMMC_BASE: usize = bcm2708::PERIPHERAL_BASE + 0x30_0000;
 
@@ -602,7 +602,7 @@ unsafe fn issue_read_cmd(
     clean_interrupts();
     let response = issue_cmd_base(cmd, arg)?;
 
-    for block in buffer.exact_chunks_mut(block_size / 4) {
+    for block in buffer.chunks_exact_mut(block_size / 4) {
         wait_interrupt(SdInterrupts::BUFFER_READ_READY).map_err(|e| CmdError {
             issued_command: cmd,
             ..e
@@ -639,7 +639,7 @@ unsafe fn issue_write_cmd(
     clean_interrupts();
     let response = issue_cmd_base(cmd, arg)?;
 
-    for block in buffer.exact_chunks(block_size / 4) {
+    for block in buffer.chunks_exact(block_size / 4) {
         wait_interrupt(SdInterrupts::BUFFER_WRITE_READY).map_err(|e| CmdError {
             issued_command: cmd,
             ..e
